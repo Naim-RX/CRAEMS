@@ -44,25 +44,8 @@ async def startup_db_seed():
 
     logger.info("Initializing database tables and enterprise seed data...")
 
-    # Try MySQL; if it fails, transparently switch everything to SQLite.
-    try:
-        async with _db.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    except Exception as err:
-        logger.warning(f"MySQL unavailable — switching to local SQLite. ({type(err).__name__})")
-        sqlite_engine = create_async_engine(settings.SQLITE_FALLBACK_URL, echo=False)
-        sqlite_session = async_sessionmaker(
-            bind=sqlite_engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-            autocommit=False,
-            autoflush=False,
-        )
-        # Update the database module so all API endpoints also use SQLite
-        _db.engine = sqlite_engine
-        _db.AsyncSessionLocal = sqlite_session
-        async with sqlite_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    async with _db.engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     # Always use the current (possibly updated) session factory
     async with _db.AsyncSessionLocal() as db:
