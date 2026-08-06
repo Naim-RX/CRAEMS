@@ -1,14 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, Filter, Plus, Calendar as CalendarIcon, CheckCircle } from 'lucide-react';
+import { Building2, Search, Filter, Plus, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
+export const HOURLY_TIME_SLOTS = [
+  { id: '08:00-09:00', label: '8:00 AM - 9:00 AM', startHour: 8, endHour: 9 },
+  { id: '09:00-10:00', label: '9:00 AM - 10:00 AM', startHour: 9, endHour: 10 },
+  { id: '10:00-11:00', label: '10:00 AM - 11:00 AM', startHour: 10, endHour: 11 },
+  { id: '11:00-12:00', label: '11:00 AM - 12:00 PM', startHour: 11, endHour: 12 },
+  { id: '12:00-13:00', label: '12:00 PM - 1:00 PM', startHour: 12, endHour: 13 },
+  { id: '13:00-14:00', label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
+  { id: '14:00-15:00', label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
+  { id: '15:00-16:00', label: '3:00 PM - 4:00 PM', startHour: 15, endHour: 16 },
+  { id: '16:00-17:00', label: '4:00 PM - 5:00 PM', startHour: 16, endHour: 17 },
+];
+
 export const RoomManagementPage = () => {
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [buildings, setBuildings] = useState([]);
+  const [allBookings, setAllBookings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState('');
   const [minCapacity, setMinCapacity] = useState(0);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -16,8 +29,8 @@ export const RoomManagementPage = () => {
 
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [bookingDate, setBookingDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedSlot, setSelectedSlot] = useState('08:00-09:00');
   const [attendeesCount, setAttendeesCount] = useState(1);
   const [formMsg, setFormMsg] = useState('');
 
@@ -27,12 +40,14 @@ export const RoomManagementPage = () => {
       if (selectedBuilding) url += `&building_id=${selectedBuilding}`;
       if (minCapacity > 0) url += `&min_capacity=${minCapacity}`;
       
-      const [rRes, bRes] = await Promise.all([
+      const [rRes, bRes, bkRes] = await Promise.all([
         api.get(url),
-        api.get('/rooms/buildings')
+        api.get('/rooms/buildings'),
+        api.get('/bookings')
       ]);
       setRooms(rRes.data);
       setBuildings(bRes.data);
+      setAllBookings(Array.isArray(bkRes.data) ? bkRes.data : []);
     } catch (err) {
       console.error('Room management fetch error:', err);
     }
@@ -42,9 +57,33 @@ export const RoomManagementPage = () => {
     fetchRoomsData();
   }, [selectedBuilding, minCapacity]);
 
+  const isSlotBooked = (slot, dateStr, roomId) => {
+    if (!dateStr || !roomId) return false;
+    const slotStart = new Date(`${dateStr}T${String(slot.startHour).padStart(2, '0')}:00:00`).getTime();
+    const slotEnd = new Date(`${dateStr}T${String(slot.endHour).padStart(2, '0')}:00:00`).getTime();
+
+    return allBookings.some(b => {
+      if (b.room_id !== roomId && b.room?.id !== roomId) return false;
+      if (['CANCELLED', 'REJECTED'].includes(b.status)) return false;
+
+      const startStr = String(b.start_time).replace('Z', '').replace(' ', 'T');
+      const endStr = String(b.end_time).replace('Z', '').replace(' ', 'T');
+      const bStart = new Date(startStr).getTime();
+      const bEnd = new Date(endStr).getTime();
+
+      return bStart < slotEnd && bEnd > slotStart;
+    });
+  };
+
   const openBookingForRoom = (room) => {
     setTargetRoom(room);
     setAttendeesCount(Math.min(room.capacity, 10));
+    setFormMsg('');
+    
+    const dateStr = bookingDate || new Date().toISOString().split('T')[0];
+    const freeSlot = HOURLY_TIME_SLOTS.find(s => !isSlotBooked(s, dateStr, room.id));
+    if (freeSlot) setSelectedSlot(freeSlot.id);
+    
     setIsBookModalOpen(true);
   };
 
@@ -56,24 +95,41 @@ export const RoomManagementPage = () => {
       return;
     }
 
+    const slotObj = HOURLY_TIME_SLOTS.find(s => s.id === selectedSlot);
+    if (!bookingDate || !slotObj) {
+      setFormMsg('Please select both a booking date and a time slot.');
+      return;
+    }
+
+    if (isSlotBooked(slotObj, bookingDate, targetRoom.id)) {
+      setFormMsg('Selected slot is already booked. Please pick a free slot.');
+      return;
+    }
+
+    const startTimeISO = `${bookingDate}T${String(slotObj.startHour).padStart(2, '0')}:00:00`;
+    const endTimeISO = `${bookingDate}T${String(slotObj.endHour).padStart(2, '0')}:00:00`;
+
     try {
       await api.post(`/bookings?user_id=${user.id}`, {
         room_id: targetRoom.id,
         title,
         purpose,
-        start_time: new Date(startTime).toISOString(),
-        end_time: new Date(endTime).toISOString(),
+        start_time: startTimeISO,
+        end_time: endTimeISO,
         attendees_count: Number(attendeesCount)
       });
       setFormMsg('Reservation request submitted successfully!');
       setTimeout(() => {
         setIsBookModalOpen(false);
         setFormMsg('');
+        fetchRoomsData();
       }, 1200);
     } catch (err) {
-      setFormMsg(err.response?.data?.detail || 'Booking conflict detected.');
+      setFormMsg(err.response?.data?.detail || 'Booking conflict detected for this slot.');
     }
   };
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -175,14 +231,73 @@ export const RoomManagementPage = () => {
               <textarea className="form-textarea" rows="2" placeholder="Intended use..." value={purpose} onChange={(e) => setPurpose(e.target.value)} required />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Start Time</label>
-                <input type="datetime-local" className="form-input" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">End Time</label>
-                <input type="datetime-local" className="form-input" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+            <div className="form-group">
+              <label className="form-label">Booking Date</label>
+              <input
+                type="date"
+                className="form-input"
+                value={bookingDate}
+                min={todayStr}
+                onChange={(e) => setBookingDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Clock size={14} color="var(--accent-primary)" /> Time Slots (8:00 AM — 5:00 PM)
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                  🔴 Red = Booked & Disabled
+                </span>
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.35rem' }}>
+                {HOURLY_TIME_SLOTS.map((slot) => {
+                  const booked = isSlotBooked(slot, bookingDate, targetRoom.id);
+                  const isSelected = selectedSlot === slot.id;
+
+                  let bg = 'rgba(255, 255, 255, 0.03)';
+                  let border = '1px solid var(--border-color)';
+                  let color = 'var(--text-muted)';
+                  let labelText = slot.label;
+
+                  if (booked) {
+                    bg = 'rgba(239, 68, 68, 0.18)';
+                    border = '1px solid rgba(239, 68, 68, 0.4)';
+                    color = '#f87171';
+                    labelText = `${slot.label} (BOOKED)`;
+                  } else if (isSelected) {
+                    bg = 'rgba(99, 102, 241, 0.25)';
+                    border = '1px solid var(--accent-primary)';
+                    color = '#a5b4fc';
+                  }
+
+                  return (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      disabled={booked}
+                      onClick={() => setSelectedSlot(slot.id)}
+                      title={booked ? 'This slot is already booked' : 'Click to select this slot'}
+                      style={{
+                        padding: '0.55rem 0.25rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        cursor: booked ? 'not-allowed' : 'pointer',
+                        textAlign: 'center',
+                        border,
+                        background: bg,
+                        color,
+                        opacity: booked ? 0.85 : 1,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {labelText}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

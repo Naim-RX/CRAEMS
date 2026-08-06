@@ -57,7 +57,9 @@ export const Navbar = () => {
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        <Link to="/" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Home</Link>
+        {!user && (
+          <Link to="/" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Home</Link>
+        )}
         <Link to="/rooms" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Facilities</Link>
         <Link to="/equipment" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Equipment</Link>
         <Link to="/events" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Events</Link>

@@ -28,6 +28,7 @@ import { EventManagementPage } from './pages/modules/EventManagementPage';
 import { ReportsPage } from './pages/modules/ReportsPage';
 import { ProfilePage } from './pages/modules/ProfilePage';
 import { AdminSettingsPage } from './pages/modules/AdminSettingsPage';
+import { BookingStatusPage } from './pages/modules/BookingStatusPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 import './styles/index.css';
@@ -54,6 +55,13 @@ const DashboardRedirect = () => {
   }
 };
 
+// Home redirect — logged-in users go to dashboard instead of public homepage
+const HomeRedirect = () => {
+  const { user } = useAuth();
+  if (user) return <DashboardRedirect />;
+  return <HomePage />;
+};
+
 function App() {
   return (
     <ThemeProvider>
@@ -62,7 +70,7 @@ function App() {
           <Routes>
             {/* Public routes */}
             <Route element={<MainLayout />}>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<HomeRedirect />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/rooms" element={<RoomManagementPage />} />
@@ -117,6 +125,7 @@ function App() {
               <Route path="/reports" element={<ProtectedRoute allowedRoles={['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY']}><ReportsPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings/admin" element={<ProtectedRoute allowedRoles={['ADMINISTRATOR']}><AdminSettingsPage /></ProtectedRoute>} />
+              <Route path="/status" element={<BookingStatusPage />} />
             </Route>
 
             {/* 404 */}

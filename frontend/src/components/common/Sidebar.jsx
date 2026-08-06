@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Calendar, Box, Ticket, FileText, Settings, ShieldCheck, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Calendar, Box, Ticket, FileText, Settings, ShieldCheck, UserCheck, Activity } from 'lucide-react';
 
 export const Sidebar = () => {
   const { user } = useAuth();
@@ -21,6 +21,7 @@ export const Sidebar = () => {
     { title: 'Room Management', path: '/rooms', icon: Calendar, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY', 'STUDENT', 'RESEARCHER'] },
     { title: 'Equipment Hub', path: '/equipment', icon: Box, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY', 'STUDENT', 'LAB_ASSISTANT'] },
     { title: 'Campus Events', path: '/events', icon: Ticket, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY', 'STUDENT', 'GUEST', 'LAB_ASSISTANT'] },
+    { title: 'Live Booking Status', path: '/status', icon: Activity, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY', 'STUDENT', 'RESEARCHER', 'LAB_ASSISTANT', 'GUEST'] },
     { title: 'Reports & Analytics', path: '/reports', icon: FileText, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY'] },
     { title: 'Admin Settings', path: '/settings/admin', icon: ShieldCheck, roles: ['ADMINISTRATOR'] },
     { title: 'My Profile', path: '/profile', icon: UserCheck, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY', 'STUDENT', 'RESEARCHER', 'LAB_ASSISTANT', 'GUEST'] },

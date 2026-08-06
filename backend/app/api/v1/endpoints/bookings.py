@@ -65,7 +65,9 @@ async def create_booking(
             selectinload(RoomBooking.room).selectinload(Room.building),
             selectinload(RoomBooking.room).selectinload(Room.floor),
             selectinload(RoomBooking.room).selectinload(Room.room_type),
-            selectinload(RoomBooking.user).selectinload(User.role)
+            selectinload(RoomBooking.room).selectinload(Room.images),
+            selectinload(RoomBooking.user).selectinload(User.role),
+            selectinload(RoomBooking.user).selectinload(User.department)
         )
         .where(RoomBooking.id == booking.id)
     )
@@ -84,7 +86,9 @@ async def list_bookings(
             selectinload(RoomBooking.room).selectinload(Room.building),
             selectinload(RoomBooking.room).selectinload(Room.floor),
             selectinload(RoomBooking.room).selectinload(Room.room_type),
-            selectinload(RoomBooking.user).selectinload(User.role)
+            selectinload(RoomBooking.room).selectinload(Room.images),
+            selectinload(RoomBooking.user).selectinload(User.role),
+            selectinload(RoomBooking.user).selectinload(User.department)
         )
         .order_by(RoomBooking.start_time.desc())
     )
