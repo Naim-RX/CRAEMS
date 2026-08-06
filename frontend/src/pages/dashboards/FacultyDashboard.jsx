@@ -64,11 +64,8 @@ export const FacultyDashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem' }}>Faculty Academic Hub</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Lecture Hall Reservations & Academic Department Events</p>
+          <p style={{ color: 'var(--text-muted)' }}>Academic Overview & Department Events</p>
         </div>
-        <button className="btn-primary" onClick={() => setIsBookModalOpen(true)}>
-          <Plus size={18} /> Reserve Lecture / Lab
-        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>

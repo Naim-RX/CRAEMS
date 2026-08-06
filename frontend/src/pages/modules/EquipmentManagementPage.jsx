@@ -27,6 +27,14 @@ export const EquipmentManagementPage = () => {
   const [selectedSlot, setSelectedSlot] = useState('08:00-09:00');
   const [msg, setMsg] = useState('');
 
+  // Admin Add Equipment state
+  const [isAddEqModalOpen, setIsAddEqModalOpen] = useState(false);
+  const [newSerial, setNewSerial] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newCategoryId, setNewCategoryId] = useState(1);
+  const [newCondition, setNewCondition] = useState('EXCELLENT');
+  const [addEqMsg, setAddEqMsg] = useState('');
+
   const fetchEquipmentData = async () => {
     try {
       const [eqRes, resRes] = await Promise.allSettled([
@@ -45,6 +53,30 @@ export const EquipmentManagementPage = () => {
   useEffect(() => {
     fetchEquipmentData();
   }, []);
+
+  const handleAddEquipmentSubmit = async (e) => {
+    e.preventDefault();
+    setAddEqMsg('');
+    try {
+      await api.post('/equipment', {
+        serial_number: newSerial,
+        name: newName,
+        category_id: Number(newCategoryId),
+        condition: newCondition,
+        is_available: true
+      });
+      setAddEqMsg('Equipment item created successfully!');
+      setTimeout(() => {
+        setIsAddEqModalOpen(false);
+        setNewSerial('');
+        setNewName('');
+        setAddEqMsg('');
+        fetchEquipmentData();
+      }, 1000);
+    } catch (err) {
+      setAddEqMsg(err.response?.data?.detail || 'Failed to add equipment.');
+    }
+  };
 
   const isSlotBooked = (slot, dateStr, eqId) => {
     if (!dateStr || !eqId) return false;
@@ -102,7 +134,7 @@ export const EquipmentManagementPage = () => {
         start_time: startTimeISO,
         expected_return_time: returnTimeISO
       });
-      setMsg('Equipment reserved successfully!');
+      setMsg('Equipment reservation request submitted!');
       setTimeout(() => {
         setIsReserveModalOpen(false);
         setMsg('');
@@ -114,12 +146,20 @@ export const EquipmentManagementPage = () => {
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
+  const isStudent = user?.role?.name === 'STUDENT';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div>
-        <h1 style={{ fontSize: '1.8rem' }}>Serialized Campus Equipment Inventory</h1>
-        <p style={{ color: 'var(--text-muted)' }}>AV gear, laboratory instruments, and portable hardware reservations</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '1.8rem' }}>Serialized Campus Equipment Inventory</h1>
+          <p style={{ color: 'var(--text-muted)' }}>AV gear, laboratory instruments, and portable hardware reservations</p>
+        </div>
+        {user?.role?.name === 'ADMINISTRATOR' && (
+          <button className="btn-primary" onClick={() => { setAddEqMsg(''); setIsAddEqModalOpen(true); }}>
+            <Plus size={18} /> Add New Equipment
+          </button>
+        )}
       </div>
 
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
@@ -147,7 +187,7 @@ export const EquipmentManagementPage = () => {
                       style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
                       onClick={() => openReserveModal(item)}
                     >
-                      Reserve Gear
+                      {isStudent ? 'Request Equipment' : 'Reserve Gear'}
                     </button>
                   </td>
                 </tr>
@@ -246,6 +286,61 @@ export const EquipmentManagementPage = () => {
           </form>
         </Modal>
       )}
+
+      {/* Admin Add Equipment Modal */}
+      <Modal isOpen={isAddEqModalOpen} onClose={() => setIsAddEqModalOpen(false)} title="Add New Serialized Equipment">
+        {addEqMsg && (
+          <div style={{
+            padding: '0.75rem',
+            borderRadius: 'var(--radius-sm)',
+            background: addEqMsg.includes('successfully') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            color: addEqMsg.includes('successfully') ? '#34d399' : '#f87171',
+            fontSize: '0.85rem',
+            marginBottom: '1rem'
+          }}>
+            {addEqMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleAddEquipmentSubmit}>
+          <div className="form-group">
+            <label className="form-label">Serial Tag Number</label>
+            <input type="text" className="form-input" placeholder="e.g. SN-AV-9988, CAM-4K-02" value={newSerial} onChange={(e) => setNewSerial(e.target.value)} required />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Equipment Name</label>
+            <input type="text" className="form-input" placeholder="e.g. Sony 4K Cinema Camera Kit" value={newName} onChange={(e) => setNewName(e.target.value)} required />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Category</label>
+              <select className="form-select" value={newCategoryId} onChange={(e) => setNewCategoryId(e.target.value)}>
+                <option value={1}>AV & Multimedia</option>
+                <option value={2}>Lab Instruments</option>
+                <option value={3}>Computing Hardware</option>
+                <option value={4}>Event & Stage Gear</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Condition</label>
+              <select className="form-select" value={newCondition} onChange={(e) => setNewCondition(e.target.value)}>
+                <option value="EXCELLENT">EXCELLENT</option>
+                <option value="GOOD">GOOD</option>
+                <option value="FAIR">FAIR</option>
+                <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
+            Create Equipment Item
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 };
+

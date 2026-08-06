@@ -10,6 +10,14 @@ class EquipmentCategoryOut(BaseModel):
     class Config:
         from_attributes = True
 
+class EquipmentCreate(BaseModel):
+    serial_number: str
+    name: str
+    category_id: int
+    assigned_room_id: Optional[str] = None
+    condition: Optional[str] = "EXCELLENT"
+    is_available: Optional[bool] = True
+
 class EquipmentOut(BaseModel):
     id: str
     serial_number: str
@@ -40,3 +48,4 @@ class EquipmentReservationOut(BaseModel):
 
     class Config:
         from_attributes = True
+

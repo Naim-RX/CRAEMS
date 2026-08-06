@@ -21,11 +21,21 @@ export const RoomManagementPage = () => {
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [buildings, setBuildings] = useState([]);
+  const [roomTypes, setRoomTypes] = useState([]);
   const [allBookings, setAllBookings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState('');
   const [minCapacity, setMinCapacity] = useState(0);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [targetRoom, setTargetRoom] = useState(null);
+
+  // Admin Add Room state
+  const [isAddRoomModalOpen, setIsAddRoomModalOpen] = useState(false);
+  const [newRoomNumber, setNewRoomNumber] = useState('');
+  const [newBuildingId, setNewBuildingId] = useState(1);
+  const [newFloorId, setNewFloorId] = useState(1);
+  const [newRoomTypeId, setNewRoomTypeId] = useState(1);
+  const [newCapacity, setNewCapacity] = useState(30);
+  const [addRoomMsg, setAddRoomMsg] = useState('');
 
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
@@ -40,14 +50,22 @@ export const RoomManagementPage = () => {
       if (selectedBuilding) url += `&building_id=${selectedBuilding}`;
       if (minCapacity > 0) url += `&min_capacity=${minCapacity}`;
       
-      const [rRes, bRes, bkRes] = await Promise.all([
+      const [rRes, bRes, bkRes, tRes] = await Promise.allSettled([
         api.get(url),
         api.get('/rooms/buildings'),
-        api.get('/bookings')
+        api.get('/bookings'),
+        api.get('/rooms/types')
       ]);
-      setRooms(rRes.data);
-      setBuildings(bRes.data);
-      setAllBookings(Array.isArray(bkRes.data) ? bkRes.data : []);
+      if (rRes.status === 'fulfilled') setRooms(rRes.value.data);
+      if (bRes.status === 'fulfilled') {
+        setBuildings(bRes.value.data);
+        if (bRes.value.data.length > 0 && !newBuildingId) setNewBuildingId(bRes.value.data[0].id);
+      }
+      if (bkRes.status === 'fulfilled') setAllBookings(Array.isArray(bkRes.value.data) ? bkRes.value.data : []);
+      if (tRes.status === 'fulfilled') {
+        setRoomTypes(tRes.value.data);
+        if (tRes.value.data.length > 0 && !newRoomTypeId) setNewRoomTypeId(tRes.value.data[0].id);
+      }
     } catch (err) {
       console.error('Room management fetch error:', err);
     }
@@ -56,6 +74,31 @@ export const RoomManagementPage = () => {
   useEffect(() => {
     fetchRoomsData();
   }, [selectedBuilding, minCapacity]);
+
+  const handleAddRoomSubmit = async (e) => {
+    e.preventDefault();
+    setAddRoomMsg('');
+    try {
+      await api.post('/rooms', {
+        room_number: newRoomNumber,
+        building_id: Number(newBuildingId),
+        floor_id: Number(newFloorId),
+        room_type_id: Number(newRoomTypeId),
+        capacity: Number(newCapacity),
+        is_active: true,
+        features: { projector: true, wifi: true, hvac: true }
+      });
+      setAddRoomMsg('Room added successfully!');
+      setTimeout(() => {
+        setIsAddRoomModalOpen(false);
+        setNewRoomNumber('');
+        setAddRoomMsg('');
+        fetchRoomsData();
+      }, 1000);
+    } catch (err) {
+      setAddRoomMsg(err.response?.data?.detail || 'Failed to add new room.');
+    }
+  };
 
   const isSlotBooked = (slot, dateStr, roomId) => {
     if (!dateStr || !roomId) return false;
@@ -133,9 +176,16 @@ export const RoomManagementPage = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div>
-        <h1 style={{ fontSize: '1.8rem' }}>Campus Room & Facility Catalog</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Interactive facility lookup, real-time availability & conflict-free booking</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '1.8rem' }}>Campus Room & Facility Catalog</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Interactive facility lookup, real-time availability & conflict-free booking</p>
+        </div>
+        {user?.role?.name === 'ADMINISTRATOR' && (
+          <button className="btn-primary" onClick={() => { setAddRoomMsg(''); setIsAddRoomModalOpen(true); }}>
+            <Plus size={18} /> Add New Room
+          </button>
+        )}
       </div>
 
       {/* Filter Toolbar */}
@@ -312,6 +362,71 @@ export const RoomManagementPage = () => {
           </form>
         </Modal>
       )}
+
+      {/* Admin Add Room Modal */}
+      <Modal isOpen={isAddRoomModalOpen} onClose={() => setIsAddRoomModalOpen(false)} title="Add New Campus Facility / Room">
+        {addRoomMsg && (
+          <div style={{
+            padding: '0.75rem',
+            borderRadius: 'var(--radius-sm)',
+            background: addRoomMsg.includes('successfully') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            color: addRoomMsg.includes('successfully') ? '#34d399' : '#f87171',
+            fontSize: '0.85rem',
+            marginBottom: '1rem'
+          }}>
+            {addRoomMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleAddRoomSubmit}>
+          <div className="form-group">
+            <label className="form-label">Room Number / ID</label>
+            <input type="text" className="form-input" placeholder="e.g. 101, Lab-B, Aud-A" value={newRoomNumber} onChange={(e) => setNewRoomNumber(e.target.value)} required />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Building</label>
+              <select className="form-select" value={newBuildingId} onChange={(e) => setNewBuildingId(e.target.value)}>
+                {buildings.map(b => (
+                  <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Floor</label>
+              <select className="form-select" value={newFloorId} onChange={(e) => setNewFloorId(e.target.value)}>
+                <option value={1}>1st Floor</option>
+                <option value={2}>2nd Floor</option>
+                <option value={3}>3rd Floor</option>
+                <option value={4}>4th Floor</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Room Type</label>
+              <select className="form-select" value={newRoomTypeId} onChange={(e) => setNewRoomTypeId(e.target.value)}>
+                {roomTypes.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Seating Capacity</label>
+              <input type="number" min="1" className="form-input" value={newCapacity} onChange={(e) => setNewCapacity(e.target.value)} required />
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
+            Create Room
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 };
+

@@ -118,11 +118,8 @@ export const StudentDashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem' }}>Welcome back, {user.full_name}!</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Student Dashboard & Campus Resource Manager</p>
+          <p style={{ color: 'var(--text-muted)' }}>Student Academic & Activity Dashboard</p>
         </div>
-        <button className="btn-primary" onClick={() => { setFormMsg(''); setIsBookModalOpen(true); }}>
-          <Plus size={18} /> Quick Reserve Room
-        </button>
       </div>
 
       {/* Summary Cards */}

@@ -1,107 +1,603 @@
-import React, { useState, useEffect } from 'react';
-import { Ticket, QrCode, Plus, Calendar, CheckCircle } from 'lucide-react';
-import { Modal } from '../../components/common/Modal';
-import { QRScannerModal } from '../../components/common/QRScannerModal';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
-export const EventManagementPage = () => {
-  const { user } = useAuth();
-  const [events, setEvents] = useState([]);
-  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
-  const [ticketModalData, setTicketModalData] = useState(null);
-  const [msg, setMsg] = useState('');
+// Sub-components
+import { EventHero } from '../../components/events/EventHero';
+import { EventFilters } from '../../components/events/EventFilters';
+import { FeaturedEventCard } from '../../components/events/FeaturedEventCard';
+import { EventGridCard } from '../../components/events/EventGridCard';
+import { EventCalendarView } from '../../components/events/EventCalendarView';
+import { EventTimelineView } from '../../components/events/EventTimelineView';
+import { UpcomingCarousel } from '../../components/events/UpcomingCarousel';
+import { EventCategoryList } from '../../components/events/EventCategoryList';
+import { EventAnnouncements } from '../../components/events/EventAnnouncements';
+import { EventStats } from '../../components/events/EventStats';
+import { EventDetailsModal } from '../../components/events/EventDetailsModal';
+import { MyEventsView } from '../../components/events/MyEventsView';
+import { EventFormModal } from '../../components/events/EventFormModal';
+import { Modal } from '../../components/common/Modal';
+import { QRScannerModal } from '../../components/common/QRScannerModal';
 
-  const fetchEvents = async () => {
-    try {
-      const res = await api.get('/events');
-      setEvents(res.data);
-    } catch (err) {
-      console.error('Events fetch error:', err);
-    }
-  };
+import {
+  LayoutGrid, Calendar, AlignLeft, Ticket, QrCode, Plus, Bell,
+  BarChart2, CheckCircle2, Download, RefreshCw, User as UserIcon
+} from 'lucide-react';
 
+// ────────────────────────────────────────────────
+// MOCK DATA — used for UI demonstration when API returns empty/fails
+// ────────────────────────────────────────────────
+const DEMO_EVENTS = [
+  {
+    id: 1, title: 'Annual AI & Robotics Innovation Symposium', description: 'A flagship university event showcasing cutting-edge AI research, robotics demonstrations, and industry talks from leading tech companies.',
+    category: { id: 1, name: 'Conference' }, cover_image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
+    start_time: new Date(Date.now() + 5 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 5 * 24 * 3600000 + 4 * 3600000).toISOString(),
+    registration_deadline: new Date(Date.now() + 4 * 24 * 3600000).toISOString(),
+    max_seats: 200, registered_count: 143, event_mode: 'HYBRID', price_type: 'FREE',
+    organizer: { full_name: 'Prof. Ahmed Rahman', email: 'ahmed.rahman@university.edu' },
+    room: { room_number: 'A-101', building: { name: 'Innovation Hub', code: 'IH' } },
+    status: 'PUBLISHED', is_published: true
+  },
+  {
+    id: 2, title: 'Full-Stack Web Development Bootcamp', description: 'Intensive 2-day bootcamp covering React, Node.js, FastAPI, PostgreSQL, Docker and modern CI/CD pipelines.',
+    category: { id: 2, name: 'Workshop' }, cover_image: 'https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?auto=format&fit=crop&w=800&q=80',
+    start_time: new Date(Date.now() + 2 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 3 * 24 * 3600000).toISOString(),
+    registration_deadline: new Date(Date.now() + 1 * 24 * 3600000).toISOString(),
+    max_seats: 60, registered_count: 58, event_mode: 'OFFLINE', price_type: 'FREE',
+    organizer: { full_name: 'Dr. Sarah Chen', email: 'sarah.chen@university.edu' },
+    room: { room_number: 'CS-Lab-3', building: { name: 'CS Department', code: 'CS' } },
+    status: 'PUBLISHED', is_published: true
+  },
+  {
+    id: 3, title: 'Inter-University Hackathon 2026', description: 'Build innovative solutions in 24 hours. Cash prizes, mentorship from industry leaders, and career opportunities await!',
+    category: { id: 3, name: 'Hackathon' }, cover_image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
+    start_time: new Date(Date.now() + 7 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 8 * 24 * 3600000).toISOString(),
+    registration_deadline: new Date(Date.now() + 6 * 24 * 3600000).toISOString(),
+    max_seats: 120, registered_count: 67, event_mode: 'OFFLINE', price_type: 'FREE',
+    organizer: { full_name: 'IEEE Student Chapter', email: 'ieee@university.edu' },
+    room: { room_number: 'Main Auditorium', building: { name: 'Student Center', code: 'SC' } },
+    status: 'PUBLISHED', is_published: true
+  },
+  {
+    id: 4, title: 'Cultural Night: Harmony of Nations', description: 'An evening celebrating the rich cultural diversity of our international student community with music, dance, and traditional food.',
+    category: { id: 4, name: 'Cultural Programs' }, cover_image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80',
+    start_time: new Date(Date.now() + 3 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 3 * 24 * 3600000 + 3 * 3600000).toISOString(),
+    registration_deadline: null,
+    max_seats: 500, registered_count: 234, event_mode: 'OFFLINE', price_type: 'FREE',
+    organizer: { full_name: 'International Students Society', email: 'iss@university.edu' },
+    room: { room_number: 'Open Amphitheatre', building: { name: 'Arts & Culture', code: 'AC' } },
+    status: 'PUBLISHED', is_published: true
+  },
+  {
+    id: 5, title: 'Graduate Research Conference 2026', description: 'Present and discuss groundbreaking postgraduate research across STEM, Social Sciences, and Humanities.',
+    category: { id: 5, name: 'Research' }, cover_image: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?auto=format&fit=crop&w=800&q=80',
+    start_time: new Date(Date.now() + 12 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 13 * 24 * 3600000).toISOString(),
+    registration_deadline: new Date(Date.now() + 10 * 24 * 3600000).toISOString(),
+    max_seats: 100, registered_count: 22, event_mode: 'HYBRID', price_type: 'PAID', price_amount: 25,
+    organizer: { full_name: 'Office of Graduate Studies', email: 'grad@university.edu' },
+    room: { room_number: 'B-201', building: { name: 'Research Center', code: 'RC' } },
+    status: 'PUBLISHED', is_published: true
+  },
+  {
+    id: 6, title: 'Career Fair: Connect with Employers', description: 'Meet hiring managers from 50+ leading companies across tech, finance, healthcare, and engineering sectors.',
+    category: { id: 6, name: 'Career Fair' }, cover_image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=800&q=80',
+    start_time: new Date(Date.now() + 1 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 1 * 24 * 3600000 + 6 * 3600000).toISOString(),
+    registration_deadline: new Date(Date.now() + 12 * 3600000).toISOString(),
+    max_seats: 1000, registered_count: 678, event_mode: 'OFFLINE', price_type: 'FREE',
+    organizer: { full_name: 'Career Development Center', email: 'careers@university.edu' },
+    room: { room_number: 'Exhibition Hall', building: { name: 'University Convention Center', code: 'UCC' } },
+    status: 'PUBLISHED', is_published: true
+  }
+];
+
+const DEMO_ANNOUNCEMENTS = [
+  { id: 1, title: 'Venue Change: AI Symposium', content: 'The AI Symposium main keynote has moved from Hall-A to the Main Auditorium due to increased registrations.', type: 'VENUE_CHANGE', created_at: new Date().toISOString() },
+  { id: 2, title: 'Deadline Extended: Research Conference', content: 'Registration deadline for Graduate Research Conference extended by 3 days due to high demand. New deadline: Nov 28th.', type: 'DEADLINE_EXTENSION', created_at: new Date().toISOString() },
+  { id: 3, title: 'New Workshop Added: ML Foundations', content: 'A new Machine Learning Foundations workshop has been added this week. Seats limited to 30 participants.', type: 'UPDATE', created_at: new Date().toISOString() },
+];
+
+const DEMO_CATEGORIES = [
+  { id: 1, name: 'Workshops' }, { id: 2, name: 'Seminars' }, { id: 3, name: 'Conferences' },
+  { id: 4, name: 'Hackathons' }, { id: 5, name: 'Competitions' }, { id: 6, name: 'Cultural Programs' },
+  { id: 7, name: 'Sports' }, { id: 8, name: 'Career Fair' }, { id: 9, name: 'Research' }, { id: 10, name: 'Training' }
+];
+
+const DEMO_STATS = { total_events: 24, total_registrations: 1842, upcoming_events: 8, certificates_issued: 342, departments_participating: 9, students_participating: 1245 };
+
+// ────────────────────────────────────────────────
+// View selector tabs
+// ────────────────────────────────────────────────
+const VIEW_TABS = [
+  { key: 'grid', label: 'Grid View', icon: LayoutGrid },
+  { key: 'calendar', label: 'Calendar View', icon: Calendar },
+  { key: 'timeline', label: 'Timeline View', icon: AlignLeft },
+  { key: 'my-events', label: 'My Events', icon: Ticket },
+];
+
+// ────────────────────────────────────────────────
+// Admin Quick Action Panel
+// ────────────────────────────────────────────────
+const AdminControlPanel = ({ onCreateEvent, onOpenScanner }) => (
+  <div className="glass-panel" style={{
+    padding: '1.25rem 1.5rem',
+    background: 'linear-gradient(135deg, rgba(30,27,75,0.6) 0%, rgba(15,23,42,0.8) 100%)',
+    borderColor: 'rgba(99,102,241,0.3)'
+  }}>
+    <div style={{ fontSize: '0.85rem', color: 'var(--accent-primary)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '1rem' }}>
+      ⚙️ Admin Event Control Panel
+    </div>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+      <button className="btn-primary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }} onClick={onCreateEvent}>
+        <Plus size={15} /> Create Event
+      </button>
+      <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }} onClick={onOpenScanner}>
+        <QrCode size={15} /> QR Scanner
+      </button>
+      <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}>
+        <Download size={15} /> Export CSV
+      </button>
+      <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}>
+        <Bell size={15} /> Send Notification
+      </button>
+      <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}>
+        <BarChart2 size={15} /> Analytics
+      </button>
+    </div>
+  </div>
+);
+
+// ────────────────────────────────────────────────
+// Toast Notification component
+// ────────────────────────────────────────────────
+const Toast = ({ message, type = 'success', onClose }) => {
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
 
-  const handleRegisterEvent = async (eventId) => {
-    if (!user) {
-      alert('Please sign in to register for campus events.');
-      return;
-    }
-
-    try {
-      const res = await api.post(`/events/${eventId}/register?user_id=${user.id}`);
-      setTicketModalData(res.data);
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Event registration failed.');
-    }
+  const colors = {
+    success: { bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.4)', color: '#34d399' },
+    error: { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.4)', color: '#f87171' },
+    info: { bg: 'rgba(99,102,241,0.15)', border: 'rgba(99,102,241,0.4)', color: '#a5b4fc' }
   };
+  const c = colors[type] || colors.info;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{
+      position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 9999,
+      background: c.bg, border: `1px solid ${c.border}`, color: c.color,
+      padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)',
+      backdropFilter: 'blur(12px)', boxShadow: 'var(--shadow-lg)',
+      fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem',
+      animation: 'fadeIn 0.3s ease-out'
+    }}>
+      {type === 'success' && <CheckCircle2 size={17} />}
+      {message}
+    </div>
+  );
+};
+
+// ────────────────────────────────────────────────
+// Skeleton Loader
+// ────────────────────────────────────────────────
+const SkeletonCard = () => (
+  <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div style={{ height: '160px', background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite' }} />
+    <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div style={{ height: '12px', width: '60%', borderRadius: '4px', background: 'rgba(255,255,255,0.05)' }} />
+      <div style={{ height: '18px', width: '90%', borderRadius: '4px', background: 'rgba(255,255,255,0.07)' }} />
+      <div style={{ height: '12px', width: '80%', borderRadius: '4px', background: 'rgba(255,255,255,0.04)' }} />
+      <div style={{ height: '34px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)' }} />
+    </div>
+  </div>
+);
+
+// ────────────────────────────────────────────────
+// MAIN PAGE
+// ────────────────────────────────────────────────
+export const EventManagementPage = () => {
+  const { user } = useAuth();
+
+  // State
+  const [events, setEvents] = useState([]);
+  const [filteredEvents, setFilteredEvents] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [stats, setStats] = useState({});
+  const [myRegistrations, setMyRegistrations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  // UI State
+  const [activeView, setActiveView] = useState('grid');
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
+  const [ticketModal, setTicketModal] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [filters, setFilters] = useState({});
+
+  const gridRef = useRef(null);
+
+  const isAdmin = user && ['ADMINISTRATOR', 'RESOURCE_MANAGER'].includes(user.role?.name);
+  const isOrganizer = user && user.role?.name === 'EVENT_ORGANIZER';
+  const canCreateEvent = isAdmin || isOrganizer;
+  const canRequestEvent = user && ['FACULTY', 'STUDENT'].includes(user.role?.name);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  // ── Data Fetching ──────────────────────────────
+  const fetchEvents = useCallback(async () => {
+    try {
+      const res = await api.get('/events');
+      const data = res.data?.length > 0 ? res.data : DEMO_EVENTS;
+      setEvents(data);
+      setFilteredEvents(data);
+    } catch {
+      setEvents(DEMO_EVENTS);
+      setFilteredEvents(DEMO_EVENTS);
+    }
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await api.get('/events/categories');
+      setCategories(res.data?.length > 0 ? res.data : DEMO_CATEGORIES);
+    } catch {
+      setCategories(DEMO_CATEGORIES);
+    }
+  }, []);
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      const res = await api.get('/events/announcements');
+      setAnnouncements(res.data?.length > 0 ? res.data : DEMO_ANNOUNCEMENTS);
+    } catch {
+      setAnnouncements(DEMO_ANNOUNCEMENTS);
+    }
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await api.get('/events/stats');
+      setStats(Object.keys(res.data || {}).length > 0 ? res.data : DEMO_STATS);
+    } catch {
+      setStats(DEMO_STATS);
+    }
+  }, []);
+
+  const fetchMyRegistrations = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await api.get('/events/user/my-registrations');
+      setMyRegistrations(res.data || []);
+    } catch {
+      setMyRegistrations([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      setLoading(true);
+      await Promise.all([fetchEvents(), fetchCategories(), fetchAnnouncements(), fetchStats(), fetchMyRegistrations()]);
+      setLoading(false);
+    };
+    fetchAll();
+  }, []);
+
+  // ── Filter Handler ─────────────────────────────
+  const handleFiltersChange = useCallback((f) => {
+    setFilters(f);
+    let result = [...events];
+
+    if (f.search) {
+      const q = f.search.toLowerCase();
+      result = result.filter(e => e.title?.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q));
+    }
+    if (f.category) result = result.filter(e => String(e.category?.id) === String(f.category));
+    if (f.mode) result = result.filter(e => e.event_mode === f.mode);
+    if (f.price) result = result.filter(e => e.price_type === f.price);
+    if (f.sort === 'latest') result.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+    if (f.sort === 'upcoming') result.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+    if (f.sort === 'popular') result.sort((a, b) => (b.registered_count || 0) - (a.registered_count || 0));
+
+    setFilteredEvents(result);
+  }, [events]);
+
+  const handleCategoryFilter = (catId) => {
+    setSelectedCategory(catId);
+    if (!catId) {
+      setFilteredEvents(events);
+    } else {
+      setFilteredEvents(events.filter(e => String(e.category?.id) === String(catId)));
+    }
+  };
+
+  // ── Registration ───────────────────────────────
+  const handleRegister = async (event) => {
+    if (!user) {
+      showToast('Please sign in to register for events.', 'error');
+      return;
+    }
+    try {
+      const res = await api.post(`/events/${event.id}/register?user_id=${user.id}`);
+      setTicketModal(res.data);
+      showToast('Successfully registered! Your QR ticket is ready.', 'success');
+      await fetchEvents();
+      await fetchMyRegistrations();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Registration failed. Please try again.', 'error');
+    }
+  };
+
+  const handleCancelRegistration = async (registrationId) => {
+    try {
+      await api.post(`/events/cancel-registration/${registrationId}`);
+      showToast('Registration cancelled successfully.', 'info');
+      await fetchMyRegistrations();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Cancellation failed.', 'error');
+    }
+  };
+
+  // ── Event Create / Request ─────────────────────
+  const handleEventSubmit = async (formData) => {
+    const endpoint = canCreateEvent ? '/events' : '/events';
+    const payload = { ...formData, status: canCreateEvent ? 'PUBLISHED' : 'PENDING_APPROVAL' };
+    const res = await api.post(endpoint, payload);
+    showToast(canCreateEvent ? 'Event created and published!' : 'Event request submitted for review!', 'success');
+    await fetchEvents();
+    return res.data;
+  };
+
+  // ── Upcoming in next 7 days ────────────────────
+  const upcomingEvents = events.filter(e => {
+    const start = new Date(e.start_time);
+    const now = new Date();
+    const diff = (start - now) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 7;
+  });
+
+  const featuredEvent = events.find(e => e.is_published) || events[0];
+
+  // ────────────────────────────────────────────────
+  // RENDER
+  // ────────────────────────────────────────────────
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '3rem' }}>
+
+      {/* ── HERO BANNER ─────────────────────── */}
+      <EventHero
+        stats={stats}
+        onExploreClick={() => gridRef.current?.scrollIntoView({ behavior: 'smooth' })}
+        onCreateClick={() => setIsFormModalOpen(true)}
+        canCreate={canCreateEvent}
+        canRequest={canRequestEvent}
+      />
+
+      {/* ── ADMIN CONTROL PANEL ──────────────── */}
+      {isAdmin && (
+        <AdminControlPanel
+          onCreateEvent={() => setIsFormModalOpen(true)}
+          onOpenScanner={() => setIsQRScannerOpen(true)}
+        />
+      )}
+
+      {/* ── ANNOUNCEMENTS ────────────────────── */}
+      {announcements.length > 0 && <EventAnnouncements announcements={announcements} />}
+
+      {/* ── STATS SECTION ────────────────────── */}
+      <div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1rem' }}>📊 Campus Event Statistics</div>
+        <EventStats stats={stats} />
+      </div>
+
+      {/* ── UPCOMING CAROUSEL ────────────────── */}
+      {upcomingEvents.length > 0 && (
+        <UpcomingCarousel
+          events={upcomingEvents}
+          onSelectEvent={(e) => { setSelectedEvent(e); setIsDetailModalOpen(true); }}
+          onRegister={handleRegister}
+        />
+      )}
+
+      {/* ── FEATURED EVENT ───────────────────── */}
+      {featuredEvent && (
         <div>
-          <h1 style={{ fontSize: '1.8rem' }}>Campus Events & Workshop Registration</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Public symposiums, guest lectures, QR ticket scanning & attendance tracking</p>
+          <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1rem' }}>⭐ Featured Event</div>
+          <FeaturedEventCard
+            event={featuredEvent}
+            onRegister={handleRegister}
+            onLearnMore={(e) => { setSelectedEvent(e); setIsDetailModalOpen(true); }}
+          />
         </div>
-        {user && ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'LAB_ASSISTANT'].includes(user.role?.name) && (
-          <button className="btn-secondary" onClick={() => setIsQRScannerOpen(true)}>
-            <QrCode size={18} /> Open Attendance Scanner
-          </button>
+      )}
+
+      {/* ── STICKY FILTERS ───────────────────── */}
+      <EventFilters
+        categories={categories}
+        onFiltersChange={handleFiltersChange}
+      />
+
+      {/* ── CATEGORY CARDS ───────────────────── */}
+      <EventCategoryList
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onSelectCategory={handleCategoryFilter}
+      />
+
+      {/* ── VIEW TABS + EVENT GRID ────────────── */}
+      <div ref={gridRef}>
+        {/* View Switcher Tabs */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {VIEW_TABS.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeView === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveView(tab.key)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: isActive ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                    background: isActive ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.03)',
+                    color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Icon size={15} /> {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Showing <strong style={{ color: '#ffffff' }}>{filteredEvents.length}</strong> events
+          </div>
+        </div>
+
+        {/* ── GRID VIEW ─────────────────────── */}
+        {activeView === 'grid' && (
+          <>
+            {loading ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : filteredEvents.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>No Events Found</h3>
+                <p>Try adjusting your search filters or explore a different category.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {filteredEvents.map(evt => (
+                  <EventGridCard
+                    key={evt.id}
+                    event={evt}
+                    onRegister={handleRegister}
+                    onViewDetails={(e) => { setSelectedEvent(e); setIsDetailModalOpen(true); }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── CALENDAR VIEW ──────────────────── */}
+        {activeView === 'calendar' && (
+          <EventCalendarView
+            events={filteredEvents}
+            onSelectEvent={(e) => { setSelectedEvent(e); setIsDetailModalOpen(true); }}
+            onRegister={handleRegister}
+          />
+        )}
+
+        {/* ── TIMELINE VIEW ──────────────────── */}
+        {activeView === 'timeline' && (
+          <EventTimelineView
+            events={filteredEvents}
+            onSelectEvent={(e) => { setSelectedEvent(e); setIsDetailModalOpen(true); }}
+            onRegister={handleRegister}
+          />
+        )}
+
+        {/* ── MY EVENTS ──────────────────────── */}
+        {activeView === 'my-events' && (
+          <MyEventsView
+            registrations={myRegistrations}
+            onCancelRegistration={handleCancelRegistration}
+          />
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
-        {events.map(event => (
-          <div key={event.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span className="badge badge-active">{event.is_public ? 'PUBLIC EVENT' : 'INTERNAL'}</span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Capacity: {event.max_seats} seats</span>
-              </div>
+      {/* ── MODALS ─────────────────────────────── */}
 
-              <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem' }}>{event.title}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>{event.description}</p>
+      {/* Event Details Modal */}
+      <EventDetailsModal
+        isOpen={isDetailModalOpen}
+        onClose={() => { setIsDetailModalOpen(false); setSelectedEvent(null); }}
+        event={selectedEvent}
+        onRegister={handleRegister}
+      />
 
-              <div style={{ fontSize: '0.85rem', background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem' }}>
-                <div>📍 Location: Room {event.room?.room_number} ({event.room?.building?.code})</div>
-                <div>🕒 Schedule: {new Date(event.start_time).toLocaleString()}</div>
-              </div>
+      {/* Event Create/Request Form Modal */}
+      <EventFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        userRole={user?.role?.name}
+        onSubmit={handleEventSubmit}
+        categories={categories}
+      />
+
+      {/* Generated Ticket QR Modal (post-registration) */}
+      <Modal isOpen={!!ticketModal} onClose={() => setTicketModal(null)} title="🎟️ Registration Confirmed!" maxWidth="420px">
+        {ticketModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', textAlign: 'center' }}>
+            <div style={{ color: '#34d399', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CheckCircle2 size={22} /> You're Registered!
             </div>
-
-            <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => handleRegisterEvent(event.id)}>
-              <Ticket size={16} /> Register & Get QR Ticket
-            </button>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Present this QR code at the event entrance. Your ticket is also saved in <strong>My Events</strong>.
+            </p>
+            <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
+              {ticketModal.qr_code
+                ? <img src={ticketModal.qr_code} alt="QR Ticket" style={{ width: '200px', height: '200px' }} />
+                : <div style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '8px' }}>
+                    <QrCode size={80} color="#6366f1" />
+                  </div>
+              }
+            </div>
+            <div style={{ fontFamily: 'monospace', fontSize: '1.15rem', fontWeight: 900, color: 'var(--accent-primary)', letterSpacing: '0.15em', background: 'rgba(99,102,241,0.12)', padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(99,102,241,0.3)' }}>
+              {ticketModal.ticket_code}
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+              <button className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setActiveView('my-events')}>
+                View My Events
+              </button>
+              <button
+                className="btn-primary"
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = ticketModal.qr_code;
+                  link.download = `ticket_${ticketModal.ticket_code}.png`;
+                  link.click();
+                }}
+              >
+                <Download size={15} /> Download
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
+        )}
+      </Modal>
 
-      {/* Generated Ticket QR Modal */}
-      {ticketModalData && (
-        <Modal isOpen={!!ticketModalData} onClose={() => setTicketModalData(null)} title="Event Entry Ticket & QR Code">
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: '#34d399', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
-              <CheckCircle size={20} /> REGISTRATION SUCCESSFUL
-            </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-              Present this QR ticket code at the entrance scanner for check-in.
-            </div>
+      {/* QR Attendance Scanner */}
+      <QRScannerModal isOpen={isQRScannerOpen} onClose={() => setIsQRScannerOpen(false)} />
 
-            <div style={{ background: '#ffffff', padding: '1.5rem', borderRadius: 'var(--radius-md)', display: 'inline-block', marginBottom: '1.5rem' }}>
-              <img src={ticketModalData.qr_code} alt="Ticket QR Code" style={{ width: '200px', height: '200px' }} />
-            </div>
-
-            <div style={{ fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '0.1em' }}>
-              {ticketModalData.ticket_code}
-            </div>
-          </div>
-        </Modal>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
 
-      {/* QR Scanner Modal */}
-      <QRScannerModal isOpen={isQRScannerOpen} onClose={() => setIsQRScannerOpen(false)} />
+      {/* Shimmer keyframe (global inject) */}
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
     </div>
   );
 };

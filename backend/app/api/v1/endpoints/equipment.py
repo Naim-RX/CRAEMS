@@ -5,8 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.equipment import Equipment, EquipmentCategory, EquipmentReservation
-from app.schemas.equipment_schema import EquipmentOut, EquipmentReservationCreate, EquipmentReservationOut
-
+from app.schemas.equipment_schema import EquipmentOut, EquipmentCreate, EquipmentReservationCreate, EquipmentReservationOut
 from app.models.user import User
 
 router = APIRouter()
@@ -25,6 +24,32 @@ async def list_equipment(
 
     res = await db.execute(stmt)
     return res.scalars().all()
+
+@router.post("", response_model=EquipmentOut, status_code=201)
+async def create_equipment(
+    eq_in: EquipmentCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    # Check if serial number already exists
+    existing = await db.execute(select(Equipment).where(Equipment.serial_number == eq_in.serial_number))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="Equipment with this serial number already exists.")
+
+    equipment = Equipment(
+        serial_number=eq_in.serial_number,
+        name=eq_in.name,
+        category_id=eq_in.category_id,
+        assigned_room_id=eq_in.assigned_room_id,
+        condition=eq_in.condition or "EXCELLENT",
+        is_available=eq_in.is_available if eq_in.is_available is not None else True
+    )
+    db.add(equipment)
+    await db.commit()
+    await db.refresh(equipment)
+
+    stmt = select(Equipment).options(selectinload(Equipment.category)).where(Equipment.id == equipment.id)
+    res = await db.execute(stmt)
+    return res.scalars().first()
 
 @router.get("/reservations", response_model=List[EquipmentReservationOut])
 async def list_equipment_reservations(
@@ -88,3 +113,4 @@ async def reserve_equipment(
     ).where(EquipmentReservation.id == reservation.id)
     res = await db.execute(stmt)
     return res.scalars().first()
+
