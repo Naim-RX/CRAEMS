@@ -73,9 +73,6 @@ function App() {
               <Route path="/" element={<HomeRedirect />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
-              <Route path="/rooms" element={<RoomManagementPage />} />
-              <Route path="/equipment" element={<EquipmentManagementPage />} />
-              <Route path="/events" element={<EventManagementPage />} />
             </Route>
 
             {/* Auth routes */}
@@ -121,7 +118,10 @@ function App() {
                 }
               />
 
-              {/* Shared module pages inside dashboard */}
+              {/* Shared module pages inside dashboard — sidebar always visible */}
+              <Route path="/rooms" element={<RoomManagementPage />} />
+              <Route path="/equipment" element={<EquipmentManagementPage />} />
+              <Route path="/events" element={<EventManagementPage />} />
               <Route path="/reports" element={<ProtectedRoute allowedRoles={['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY']}><ReportsPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings/admin" element={<ProtectedRoute allowedRoles={['ADMINISTRATOR']}><AdminSettingsPage /></ProtectedRoute>} />
