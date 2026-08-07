@@ -244,20 +244,20 @@ export const StudentDashboard = () => {
                 const booked = isSlotBooked(slot, bookingDate, selectedRoomId);
                 const isSelected = selectedSlot === slot.id;
 
-                let bg = 'rgba(255, 255, 255, 0.03)';
-                let border = '1px solid var(--border-color)';
-                let color = 'var(--text-muted)';
+                let bg = '#F5F7FA';
+                let border = '1px solid #E0E0E0';
+                let color = '#4D4D4D';
                 let labelText = slot.label;
 
                 if (booked) {
-                  bg = 'rgba(239, 68, 68, 0.18)';
-                  border = '1px solid rgba(239, 68, 68, 0.4)';
-                  color = '#f87171';
+                  bg = '#FFEBEE';
+                  border = '1px solid rgba(211, 47, 47, 0.4)';
+                  color = '#D32F2F';
                   labelText = `${slot.label} (BOOKED)`;
                 } else if (isSelected) {
-                  bg = 'rgba(99, 102, 241, 0.25)';
-                  border = '1px solid var(--accent-primary)';
-                  color = '#a5b4fc';
+                  bg = '#E8F5E9';
+                  border = '1px solid #28A745';
+                  color = '#28A745';
                 }
 
                 return (

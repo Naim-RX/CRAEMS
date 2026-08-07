@@ -32,15 +32,16 @@ export const Sidebar = () => {
   return (
     <aside style={{
       width: '260px',
-      background: 'var(--bg-secondary)',
-      borderRight: '1px solid var(--border-color)',
+      background: '#FFFFFF',
+      borderRight: '1px solid #E0E0E0',
       padding: '1.5rem 1rem',
       display: 'flex',
       flexDirection: 'column',
       gap: '0.5rem',
-      minHeight: 'calc(100vh - 65px)'
+      minHeight: 'calc(100vh - 65px)',
+      boxShadow: 'var(--shadow-sm)'
     }}>
-      <div style={{ padding: '0 0.75rem 1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{ padding: '0 0.75rem 1rem', fontSize: '0.75rem', fontWeight: 700, color: '#89939E', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         Main Navigation
       </div>
       {allowedLinks.map((item, idx) => {
@@ -55,15 +56,16 @@ export const Sidebar = () => {
               gap: '0.85rem',
               padding: '0.75rem 1rem',
               borderRadius: 'var(--radius-sm)',
-              color: isActive ? '#ffffff' : 'var(--text-muted)',
-              background: isActive ? 'linear-gradient(135deg, var(--accent-primary) 0%, #4f46e5 100%)' : 'transparent',
+              color: isActive ? '#28A745' : '#4D4D4D',
+              background: isActive ? '#E8F5E9' : 'transparent',
               textDecoration: 'none',
-              fontWeight: isActive ? 600 : 500,
+              fontWeight: isActive ? 700 : 500,
               fontSize: '0.9rem',
-              transition: 'var(--transition-fast)'
+              transition: 'var(--transition-fast)',
+              borderLeft: isActive ? '3px solid #28A745' : '3px solid transparent'
             })}
           >
-            <Icon size={18} />
+            <Icon size={18} color={undefined} />
             <span>{item.title}</span>
           </NavLink>
         );

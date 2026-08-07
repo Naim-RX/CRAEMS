@@ -81,10 +81,9 @@ export const Navbar = () => {
   return (
     <>
       <nav style={{
-        background: 'var(--bg-glass)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: '1px solid var(--border-color)',
+        background: '#FFFFFF',
+        borderBottom: '1px solid #E0E0E0',
+        boxShadow: 'var(--shadow-sm)',
         position: 'sticky',
         top: 0,
         zIndex: 1000,
@@ -99,17 +98,17 @@ export const Navbar = () => {
         {/* ── LEFT: Logo ─────────────────────────── */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', textDecoration: 'none', flexShrink: 0 }}>
           <div style={{
-            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+            background: '#28A745',
             width: '36px', height: '36px',
             borderRadius: '10px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', boxShadow: 'var(--shadow-glow)'
+            color: 'white', boxShadow: '0 2px 8px rgba(40, 167, 69, 0.3)'
           }}>
             <Building2 size={20} />
           </div>
           <div>
-            <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.03em' }}>
-              CRAEMS<span style={{ color: 'var(--accent-primary)' }}>.EDU</span>
+            <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#263238', letterSpacing: '-0.03em' }}>
+              CRAEMS<span style={{ color: '#28A745' }}>.EDU</span>
             </span>
           </div>
         </Link>
@@ -181,22 +180,23 @@ export const Navbar = () => {
               {notifOpen && (
                 <div className="glass-panel animate-fade-in" style={{
                   position: 'absolute', top: '44px', right: 0,
-                  width: '320px', padding: '0.75rem',
+                  width: '320px', padding: '0.75rem', background: '#FFFFFF',
+                  border: '1px solid #E0E0E0',
                   boxShadow: 'var(--shadow-lg)', zIndex: 1100
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Notifications</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--accent-primary)', cursor: 'pointer' }}>Mark all read</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid #E0E0E0' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#263238' }}>Notifications</span>
+                    <span style={{ fontSize: '0.72rem', color: '#28A745', cursor: 'pointer', fontWeight: 600 }}>Mark all read</span>
                   </div>
                   {notifications.map(n => (
                     <div key={n.id} style={{
                       padding: '0.65rem 0.5rem', borderRadius: 'var(--radius-xs)',
-                      background: n.unread ? 'rgba(99,102,241,0.08)' : 'transparent',
+                      background: n.unread ? '#E8F5E9' : 'transparent',
                       marginBottom: '0.3rem', cursor: 'pointer',
-                      borderLeft: n.unread ? '3px solid var(--accent-primary)' : '3px solid transparent'
+                      borderLeft: n.unread ? '3px solid #28A745' : '3px solid transparent'
                     }}>
-                      <div style={{ fontSize: '0.82rem', color: '#ffffff', lineHeight: 1.4 }}>{n.text}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>{n.time}</div>
+                      <div style={{ fontSize: '0.82rem', color: '#263238', lineHeight: 1.4, fontWeight: n.unread ? 600 : 400 }}>{n.text}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#89939E', marginTop: '0.2rem' }}>{n.time}</div>
                     </div>
                   ))}
                 </div>
@@ -225,15 +225,15 @@ export const Navbar = () => {
               <button
                 onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
                 style={{
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
-                  color: 'var(--text-main)', padding: '0.4rem 0.85rem',
+                  background: '#F5F7FA', border: '1px solid #E0E0E0',
+                  color: '#263238', padding: '0.4rem 0.85rem',
                   borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem'
                 }}
               >
                 <div style={{
                   width: '26px', height: '26px', borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--accent-primary), #a855f7)',
+                  background: '#28A745',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '0.75rem', fontWeight: 800, color: '#ffffff', flexShrink: 0
                 }}>
@@ -249,13 +249,14 @@ export const Navbar = () => {
               {profileOpen && (
                 <div className="glass-panel animate-fade-in" style={{
                   position: 'absolute', top: '44px', right: 0,
-                  width: '220px', padding: '0.5rem',
+                  width: '220px', padding: '0.5rem', background: '#FFFFFF',
+                  border: '1px solid #E0E0E0',
                   boxShadow: 'var(--shadow-lg)', zIndex: 1100
                 }}>
                   {/* User info header */}
-                  <div style={{ padding: '0.75rem', marginBottom: '0.35rem', borderBottom: '1px solid var(--border-color)' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{user.full_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.email}</div>
+                  <div style={{ padding: '0.75rem', marginBottom: '0.35rem', borderBottom: '1px solid #E0E0E0' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#263238' }}>{user.full_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#4D4D4D' }}>{user.email}</div>
                     <div style={{ marginTop: '0.35rem' }}>
                       <span className="badge badge-active" style={{ fontSize: '0.65rem' }}>{user.role?.name}</span>
                     </div>
@@ -276,13 +277,13 @@ export const Navbar = () => {
                         style={{
                           display: 'flex', alignItems: 'center', gap: '0.65rem',
                           padding: '0.55rem 0.75rem', borderRadius: 'var(--radius-xs)',
-                          color: 'var(--text-muted)', textDecoration: 'none',
+                          color: '#4D4D4D', textDecoration: 'none',
                           fontSize: '0.875rem', fontWeight: 500,
                           transition: 'background 0.15s'
                         }}
                         onClick={() => setProfileOpen(false)}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#F5F7FA'; e.currentTarget.style.color = '#28A745'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4D4D4D'; }}
                       >
                         <Icon size={15} /> {item.label}
                       </Link>

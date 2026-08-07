@@ -31,7 +31,11 @@ export const HomePage = () => {
       {/* Hero Section */}
       <section style={{
         textAlign: 'center',
-        padding: '4rem 1rem 2rem',
+        padding: '4rem 2rem',
+        background: '#F5F7FA',
+        border: '1px solid #E0E0E0',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-sm)',
         position: 'relative'
       }}>
         <div style={{
@@ -40,22 +44,22 @@ export const HomePage = () => {
           gap: '0.5rem',
           padding: '0.35rem 1rem',
           borderRadius: '9999px',
-          background: 'rgba(99, 102, 241, 0.15)',
-          border: '1px solid rgba(99, 102, 241, 0.3)',
+          background: '#E8F5E9',
+          border: '1px solid rgba(40, 167, 69, 0.3)',
           fontSize: '0.85rem',
-          color: '#818cf8',
+          color: '#28A745',
           marginBottom: '1.5rem',
-          fontWeight: 600
+          fontWeight: 700
         }}>
           <Zap size={14} /> Enterprise Campus Resource Platform 2.0
         </div>
-        <h1 style={{ fontSize: '3.5rem', lineHeight: 1.15, marginBottom: '1.25rem' }}>
+        <h1 style={{ fontSize: '3.5rem', lineHeight: 1.15, color: '#263238', marginBottom: '1.25rem' }}>
           Centralized Facility Booking & <br />
-          <span className="gradient-text">Conflict-Free Campus Scheduling</span>
+          <span style={{ color: '#28A745' }}>Conflict-Free Campus Scheduling</span>
         </h1>
         <p style={{
           fontSize: '1.15rem',
-          color: 'var(--text-muted)',
+          color: '#4D4D4D',
           maxWidth: '720px',
           margin: '0 auto 2.5rem'
         }}>
@@ -79,32 +83,32 @@ export const HomePage = () => {
         gap: '1.5rem'
       }}>
         <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '1rem', borderRadius: 'var(--radius-sm)', color: 'var(--accent-primary)' }}>
+          <div style={{ background: '#E8F5E9', padding: '1rem', borderRadius: 'var(--radius-sm)', color: '#28A745' }}>
             <Calendar size={28} />
           </div>
           <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>{stats.total_bookings || 142}</div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Reservations Solved</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#263238' }}>{stats.total_bookings || 142}</div>
+            <div style={{ fontSize: '0.875rem', color: '#4D4D4D' }}>Reservations Solved</div>
           </div>
         </div>
 
         <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '1rem', borderRadius: 'var(--radius-sm)', color: 'var(--accent-secondary)' }}>
+          <div style={{ background: '#E8F5E9', padding: '1rem', borderRadius: 'var(--radius-sm)', color: '#28A745' }}>
             <Building2 size={28} />
           </div>
           <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>{stats.total_rooms || 28}</div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Active Facilities</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#263238' }}>{stats.total_rooms || 28}</div>
+            <div style={{ fontSize: '0.875rem', color: '#4D4D4D' }}>Active Facilities</div>
           </div>
         </div>
 
         <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ background: 'rgba(236, 72, 153, 0.15)', padding: '1rem', borderRadius: 'var(--radius-sm)', color: 'var(--accent-pink)' }}>
+          <div style={{ background: '#E8F5E9', padding: '1rem', borderRadius: 'var(--radius-sm)', color: '#28A745' }}>
             <Award size={28} />
           </div>
           <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>{stats.total_events || 12}</div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Public Events</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#263238' }}>{stats.total_events || 12}</div>
+            <div style={{ fontSize: '0.875rem', color: '#4D4D4D' }}>Public Events</div>
           </div>
         </div>
       </section>

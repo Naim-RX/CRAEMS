@@ -30,6 +30,8 @@ export const Modal = ({ isOpen, onClose, title, children, maxWidth = '560px' }) 
         overflowY: 'auto',
         padding: '1.75rem',
         position: 'relative',
+        background: '#FFFFFF',
+        border: '1px solid #E0E0E0',
         boxShadow: 'var(--shadow-lg)',
         margin: 'auto'
       }}>
@@ -38,10 +40,10 @@ export const Modal = ({ isOpen, onClose, title, children, maxWidth = '560px' }) 
           alignItems: 'center',
           justifyContent: 'space-between',
           marginBottom: '1.25rem',
-          borderBottom: '1px solid var(--border-color)',
+          borderBottom: '1px solid #E0E0E0',
           paddingBottom: '0.75rem'
         }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>{title}</h3>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#263238' }}>{title}</h3>
           <button
             onClick={onClose}
             style={{

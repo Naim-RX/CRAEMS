@@ -5,7 +5,7 @@ import api from '../../services/api';
 // Sub-components
 
 import { EventFilters } from '../../components/events/EventFilters';
-import { FeaturedEventCard } from '../../components/events/FeaturedEventCard';
+
 import { EventGridCard } from '../../components/events/EventGridCard';
 import { EventCalendarView } from '../../components/events/EventCalendarView';
 import { EventTimelineView } from '../../components/events/EventTimelineView';
@@ -56,10 +56,10 @@ const VIEW_TABS = [
 const AdminControlPanel = ({ onCreateEvent, onOpenScanner, onAddVenue }) => (
   <div className="glass-panel" style={{
     padding: '1.25rem 1.5rem',
-    background: 'linear-gradient(135deg, rgba(30,27,75,0.6) 0%, rgba(15,23,42,0.8) 100%)',
-    borderColor: 'rgba(99,102,241,0.3)'
+    background: '#F5F7FA',
+    border: '1px solid #E0E0E0'
   }}>
-    <div style={{ fontSize: '0.85rem', color: 'var(--accent-primary)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '1rem' }}>
+    <div style={{ fontSize: '0.85rem', color: '#263238', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '1rem' }}>
       ⚙️ Admin Event Control Panel
     </div>
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -387,17 +387,7 @@ const buildFallbackFloors = () => {
 
 
 
-      {/* ── FEATURED EVENT ───────────────────── */}
-      {featuredEvent && (
-        <div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1rem' }}>⭐ Featured Event</div>
-          <FeaturedEventCard
-            event={featuredEvent}
-            onRegister={handleRegister}
-            onLearnMore={(e) => { setSelectedEvent(e); setIsDetailModalOpen(true); }}
-          />
-        </div>
-      )}
+
 
       {/* ── STICKY FILTERS ───────────────────── */}
       <EventFilters

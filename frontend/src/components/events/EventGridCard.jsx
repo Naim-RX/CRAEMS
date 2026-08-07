@@ -103,35 +103,35 @@ export const EventGridCard = ({ event, onRegister, onViewDetails }) => {
       {/* Body Content */}
       <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', fontWeight: 700 }}>
+          <div style={{ fontSize: '0.75rem', color: '#28A745', fontWeight: 700 }}>
             {event.organizer?.full_name || 'University Organizer'}
           </div>
 
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0.25rem 0 0.5rem', lineHeight: 1.3 }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#263238', margin: '0.25rem 0 0.5rem', lineHeight: 1.3 }}>
             {event.title}
           </h3>
 
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <p style={{ fontSize: '0.82rem', color: '#4D4D4D', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {event.description}
           </p>
         </div>
 
         <div>
           {/* Metadata Box */}
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)' }}>
-              <Calendar size={14} color="var(--accent-secondary)" />
+          <div style={{ background: '#F5F7FA', border: '1px solid #E0E0E0', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#4D4D4D' }}>
+              <Calendar size={14} color="#28A745" />
               <span>{new Date(event.start_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)' }}>
-              <MapPin size={14} color="var(--accent-primary)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#4D4D4D' }}>
+              <MapPin size={14} color="#28A745" />
               <span>Room {event.room?.room_number || 'TBD'} ({event.room?.building?.code || 'Campus'})</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: seatsLeft > 0 ? '#34d399' : '#f87171', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: seatsLeft > 0 ? '#28A745' : '#d32f2f', fontWeight: 600 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 <Users size={14} /> {seatsLeft} Seats Available
               </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+              <span style={{ fontSize: '0.72rem', color: '#89939E' }}>
                 {event.registered_count || 0} Participants
               </span>
             </div>
