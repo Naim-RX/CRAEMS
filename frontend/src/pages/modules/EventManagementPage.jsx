@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
 // Sub-components
-import { EventHero } from '../../components/events/EventHero';
+
 import { EventFilters } from '../../components/events/EventFilters';
 import { FeaturedEventCard } from '../../components/events/FeaturedEventCard';
 import { EventGridCard } from '../../components/events/EventGridCard';
@@ -28,74 +28,9 @@ import {
 // ────────────────────────────────────────────────
 // MOCK DATA — used for UI demonstration when API returns empty/fails
 // ────────────────────────────────────────────────
-const DEMO_EVENTS = [
-  {
-    id: 1, title: 'Annual AI & Robotics Innovation Symposium', description: 'A flagship university event showcasing cutting-edge AI research, robotics demonstrations, and industry talks from leading tech companies.',
-    category: { id: 1, name: 'Conference' }, cover_image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
-    start_time: new Date(Date.now() + 5 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 5 * 24 * 3600000 + 4 * 3600000).toISOString(),
-    registration_deadline: new Date(Date.now() + 4 * 24 * 3600000).toISOString(),
-    max_seats: 200, registered_count: 143, event_mode: 'HYBRID', price_type: 'FREE',
-    organizer: { full_name: 'Prof. Ahmed Rahman', email: 'ahmed.rahman@university.edu' },
-    room: { room_number: 'A-101', building: { name: 'Innovation Hub', code: 'IH' } },
-    status: 'PUBLISHED', is_published: true
-  },
-  {
-    id: 2, title: 'Full-Stack Web Development Bootcamp', description: 'Intensive 2-day bootcamp covering React, Node.js, FastAPI, PostgreSQL, Docker and modern CI/CD pipelines.',
-    category: { id: 2, name: 'Workshop' }, cover_image: 'https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?auto=format&fit=crop&w=800&q=80',
-    start_time: new Date(Date.now() + 2 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 3 * 24 * 3600000).toISOString(),
-    registration_deadline: new Date(Date.now() + 1 * 24 * 3600000).toISOString(),
-    max_seats: 60, registered_count: 58, event_mode: 'OFFLINE', price_type: 'FREE',
-    organizer: { full_name: 'Dr. Sarah Chen', email: 'sarah.chen@university.edu' },
-    room: { room_number: 'CS-Lab-3', building: { name: 'CS Department', code: 'CS' } },
-    status: 'PUBLISHED', is_published: true
-  },
-  {
-    id: 3, title: 'Inter-University Hackathon 2026', description: 'Build innovative solutions in 24 hours. Cash prizes, mentorship from industry leaders, and career opportunities await!',
-    category: { id: 3, name: 'Hackathon' }, cover_image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
-    start_time: new Date(Date.now() + 7 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 8 * 24 * 3600000).toISOString(),
-    registration_deadline: new Date(Date.now() + 6 * 24 * 3600000).toISOString(),
-    max_seats: 120, registered_count: 67, event_mode: 'OFFLINE', price_type: 'FREE',
-    organizer: { full_name: 'IEEE Student Chapter', email: 'ieee@university.edu' },
-    room: { room_number: 'Main Auditorium', building: { name: 'Student Center', code: 'SC' } },
-    status: 'PUBLISHED', is_published: true
-  },
-  {
-    id: 4, title: 'Cultural Night: Harmony of Nations', description: 'An evening celebrating the rich cultural diversity of our international student community with music, dance, and traditional food.',
-    category: { id: 4, name: 'Cultural Programs' }, cover_image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80',
-    start_time: new Date(Date.now() + 3 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 3 * 24 * 3600000 + 3 * 3600000).toISOString(),
-    registration_deadline: null,
-    max_seats: 500, registered_count: 234, event_mode: 'OFFLINE', price_type: 'FREE',
-    organizer: { full_name: 'International Students Society', email: 'iss@university.edu' },
-    room: { room_number: 'Open Amphitheatre', building: { name: 'Arts & Culture', code: 'AC' } },
-    status: 'PUBLISHED', is_published: true
-  },
-  {
-    id: 5, title: 'Graduate Research Conference 2026', description: 'Present and discuss groundbreaking postgraduate research across STEM, Social Sciences, and Humanities.',
-    category: { id: 5, name: 'Research' }, cover_image: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?auto=format&fit=crop&w=800&q=80',
-    start_time: new Date(Date.now() + 12 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 13 * 24 * 3600000).toISOString(),
-    registration_deadline: new Date(Date.now() + 10 * 24 * 3600000).toISOString(),
-    max_seats: 100, registered_count: 22, event_mode: 'HYBRID', price_type: 'PAID', price_amount: 25,
-    organizer: { full_name: 'Office of Graduate Studies', email: 'grad@university.edu' },
-    room: { room_number: 'B-201', building: { name: 'Research Center', code: 'RC' } },
-    status: 'PUBLISHED', is_published: true
-  },
-  {
-    id: 6, title: 'Career Fair: Connect with Employers', description: 'Meet hiring managers from 50+ leading companies across tech, finance, healthcare, and engineering sectors.',
-    category: { id: 6, name: 'Career Fair' }, cover_image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=800&q=80',
-    start_time: new Date(Date.now() + 1 * 24 * 3600000).toISOString(), end_time: new Date(Date.now() + 1 * 24 * 3600000 + 6 * 3600000).toISOString(),
-    registration_deadline: new Date(Date.now() + 12 * 3600000).toISOString(),
-    max_seats: 1000, registered_count: 678, event_mode: 'OFFLINE', price_type: 'FREE',
-    organizer: { full_name: 'Career Development Center', email: 'careers@university.edu' },
-    room: { room_number: 'Exhibition Hall', building: { name: 'University Convention Center', code: 'UCC' } },
-    status: 'PUBLISHED', is_published: true
-  }
-];
+const DEMO_EVENTS = [];
 
-const DEMO_ANNOUNCEMENTS = [
-  { id: 1, title: 'Venue Change: AI Symposium', content: 'The AI Symposium main keynote has moved from Hall-A to the Main Auditorium due to increased registrations.', type: 'VENUE_CHANGE', created_at: new Date().toISOString() },
-  { id: 2, title: 'Deadline Extended: Research Conference', content: 'Registration deadline for Graduate Research Conference extended by 3 days due to high demand. New deadline: Nov 28th.', type: 'DEADLINE_EXTENSION', created_at: new Date().toISOString() },
-  { id: 3, title: 'New Workshop Added: ML Foundations', content: 'A new Machine Learning Foundations workshop has been added this week. Seats limited to 30 participants.', type: 'UPDATE', created_at: new Date().toISOString() },
-];
+const DEMO_ANNOUNCEMENTS = [];
 
 const DEMO_CATEGORIES = [
   { id: 1, name: 'Workshops' }, { id: 2, name: 'Seminars' }, { id: 3, name: 'Conferences' },
@@ -136,15 +71,6 @@ const AdminControlPanel = ({ onCreateEvent, onOpenScanner, onAddVenue }) => (
       </button>
       <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }} onClick={onOpenScanner}>
         <QrCode size={15} /> QR Scanner
-      </button>
-      <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}>
-        <Download size={15} /> Export CSV
-      </button>
-      <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}>
-        <Bell size={15} /> Send Notification
-      </button>
-      <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}>
-        <BarChart2 size={15} /> Analytics
       </button>
     </div>
   </div>
@@ -441,14 +367,6 @@ const buildFallbackFloors = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '3rem' }}>
 
-      {/* ── HERO BANNER ─────────────────────── */}
-      <EventHero
-        stats={stats}
-        onExploreClick={() => gridRef.current?.scrollIntoView({ behavior: 'smooth' })}
-        onCreateClick={() => setIsFormModalOpen(true)}
-        canCreate={canCreateEvent}
-        canRequest={canRequestEvent}
-      />
 
       {/* ── ADMIN CONTROL PANEL ──────────────── */}
       {isAdmin && (
@@ -459,8 +377,7 @@ const buildFallbackFloors = () => {
         />
       )}
 
-      {/* ── ANNOUNCEMENTS ────────────────────── */}
-      {announcements.length > 0 && <EventAnnouncements announcements={announcements} />}
+
 
       {/* ── STATS SECTION ────────────────────── */}
       <div>
@@ -468,14 +385,7 @@ const buildFallbackFloors = () => {
         <EventStats stats={stats} />
       </div>
 
-      {/* ── UPCOMING CAROUSEL ────────────────── */}
-      {upcomingEvents.length > 0 && (
-        <UpcomingCarousel
-          events={upcomingEvents}
-          onSelectEvent={(e) => { setSelectedEvent(e); setIsDetailModalOpen(true); }}
-          onRegister={handleRegister}
-        />
-      )}
+
 
       {/* ── FEATURED EVENT ───────────────────── */}
       {featuredEvent && (
