@@ -403,17 +403,19 @@ async def register_event(
         raise HTTPException(status_code=400, detail="You are already registered for this event.")
 
     ticket_code = f"TICK-{uuid.uuid4().hex[:12].upper()}"
+    qr_image_base64 = QRService.generate_ticket_qr(ticket_code)
+
     registration = EventRegistration(
         event_id=event_id,
         user_id=user_id,
         ticket_code=ticket_code,
+        qr_code=qr_image_base64,
+        status="REGISTERED",
         payment_status="COMPLETED" if event.price_type == "FREE" else "PENDING"
     )
     db.add(registration)
     await db.commit()
     await db.refresh(registration)
-
-    qr_image_base64 = QRService.generate_ticket_qr(ticket_code)
 
     return {
         "registration_id": registration.id,
@@ -421,6 +423,23 @@ async def register_event(
         "qr_code": qr_image_base64,
         "message": "Event registration successful! Your QR ticket is ready."
     }
+
+@router.post("/cancel-registration/{registration_id}")
+async def cancel_registration_by_id(
+    registration_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Cancel a registration by its ID (used by MyEventsView)."""
+    existing = await db.execute(
+        select(EventRegistration).where(EventRegistration.id == registration_id)
+    )
+    reg = existing.scalars().first()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found.")
+
+    reg.status = "CANCELLED"
+    await db.commit()
+    return {"message": "Event registration cancelled successfully."}
 
 @router.post("/{event_id}/cancel-registration")
 async def cancel_registration(
@@ -438,7 +457,7 @@ async def cancel_registration(
     if not reg:
         raise HTTPException(status_code=404, detail="Active registration not found.")
 
-    await db.delete(reg)
+    reg.status = "CANCELLED"
     await db.commit()
     return {"message": "Event registration cancelled successfully."}
 

@@ -90,6 +90,23 @@ export const LoginPage = () => {
         >
           {loading ? 'Authenticating...' : 'Sign In'} <LogIn size={18} />
         </button>
+
+        {/* Forgot Password */}
+        <div style={{ textAlign: 'center', marginTop: '0.85rem' }}>
+          <Link
+            to="/forgot-password"
+            style={{
+              fontSize: '0.85rem',
+              color: 'var(--text-muted)',
+              textDecoration: 'none',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-primary)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+          >
+            Forgot your password?
+          </Link>
+        </div>
       </form>
 
       {/* Demo Credentials Box */}

@@ -56,10 +56,10 @@ const VIEW_TABS = [
 const AdminControlPanel = ({ onCreateEvent, onOpenScanner, onAddVenue }) => (
   <div className="glass-panel" style={{
     padding: '1.25rem 1.5rem',
-    background: '#F5F7FA',
-    border: '1px solid #E0E0E0'
+    background: 'var(--bg-secondary)',
+    border: '1px solid var(--border-color)'
   }}>
-    <div style={{ fontSize: '0.85rem', color: '#263238', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '1rem' }}>
+    <div style={{ fontSize: '0.85rem', color: 'var(--accent-secondary)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '1rem' }}>
       ⚙️ Admin Event Control Panel
     </div>
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -135,6 +135,8 @@ export const EventManagementPage = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [stats, setStats] = useState({});
   const [myRegistrations, setMyRegistrations] = useState([]);
+  const [myRegsLoading, setMyRegsLoading] = useState(false);
+  const [myRegsError, setMyRegsError] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [buildings, setBuildings] = useState([]);
@@ -206,12 +208,20 @@ export const EventManagementPage = () => {
   }, []);
 
   const fetchMyRegistrations = useCallback(async () => {
-    if (!user) return;
+    if (!user) { console.warn('[MyEvents] No user, skipping fetch.'); return; }
+    setMyRegsLoading(true);
+    setMyRegsError(null);
     try {
+      console.log('[MyEvents] Fetching registrations for user:', user.id);
       const res = await api.get(`/events/user/my-registrations?user_id=${user.id}`);
+      console.log('[MyEvents] API Response:', res.data);
       setMyRegistrations(res.data || []);
-    } catch {
+    } catch (err) {
+      console.error('[MyEvents] API Error:', err.response?.data || err.message);
+      setMyRegsError(err.response?.data?.detail || 'Failed to load your events.');
       setMyRegistrations([]);
+    } finally {
+      setMyRegsLoading(false);
     }
   }, [user]);
 
@@ -260,12 +270,19 @@ const buildFallbackFloors = () => {
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
-      await Promise.all([fetchEvents(), fetchCategories(), fetchAnnouncements(), fetchStats(), fetchMyRegistrations(), fetchRooms(), fetchDepartments(), fetchVenueMeta()]);
+      await Promise.all([fetchEvents(), fetchCategories(), fetchAnnouncements(), fetchStats(), fetchRooms(), fetchDepartments(), fetchVenueMeta()]);
       setLoading(false);
     };
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchMyRegistrations();
+    }
+  }, [user, fetchMyRegistrations]);
+
 
   // ── Filter Handler ─────────────────────────────
   const handleFiltersChange = useCallback((f) => {
@@ -492,6 +509,9 @@ const buildFallbackFloors = () => {
         {activeView === 'my-events' && (
           <MyEventsView
             registrations={myRegistrations}
+            loading={myRegsLoading}
+            error={myRegsError}
+            onRefresh={fetchMyRegistrations}
             onCancelRegistration={handleCancelRegistration}
           />
         )}
@@ -538,7 +558,7 @@ const buildFallbackFloors = () => {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Present this QR code at the event entrance. Your ticket is also saved in <strong>My Events</strong>.
             </p>
-            <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
+            <div style={{ background: 'var(--bg-surface)', padding: '1.25rem', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
               {ticketModal.qr_code
                 ? <img src={ticketModal.qr_code} alt="QR Ticket" style={{ width: '200px', height: '200px' }} />
                 : <div style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '8px' }}>

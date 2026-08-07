@@ -81,8 +81,8 @@ export const Navbar = () => {
   return (
     <>
       <nav style={{
-        background: '#FFFFFF',
-        borderBottom: '1px solid #E0E0E0',
+        background: 'var(--bg-surface)',
+        borderBottom: '1px solid var(--border-color)',
         boxShadow: 'var(--shadow-sm)',
         position: 'sticky',
         top: 0,
@@ -120,11 +120,7 @@ export const Navbar = () => {
           <Link to="/events" style={navLinkStyle('/events')}>
             <Calendar size={15} /> Events
           </Link>
-          {user && (
-            <Link to="/events?view=my-events" style={navLinkStyle('/events?view=my-events')}>
-              <Ticket size={15} /> My Events
-            </Link>
-          )}
+
           {user && (
             <Link to={getDashboardRoute()} style={navLinkStyle(getDashboardRoute())}>Dashboard</Link>
           )}
@@ -148,62 +144,6 @@ export const Navbar = () => {
             <Search size={16} />
           </button>
 
-          {/* Notifications Bell */}
-          {user && (
-            <div style={{ position: 'relative' }} ref={notifRef}>
-              <button
-                onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
-                style={{
-                  background: 'transparent', border: '1px solid var(--border-color)',
-                  color: unreadCount > 0 ? 'var(--accent-primary)' : 'var(--text-muted)',
-                  width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative', transition: 'all 0.2s ease'
-                }}
-                title="Notifications"
-              >
-                <Bell size={16} />
-                {unreadCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: '-4px', right: '-4px',
-                    background: 'var(--accent-primary)', color: '#ffffff',
-                    fontSize: '0.6rem', fontWeight: 800, width: '16px', height: '16px',
-                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '2px solid var(--bg-primary)'
-                  }}>
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Notifications Dropdown */}
-              {notifOpen && (
-                <div className="glass-panel animate-fade-in" style={{
-                  position: 'absolute', top: '44px', right: 0,
-                  width: '320px', padding: '0.75rem', background: '#FFFFFF',
-                  border: '1px solid #E0E0E0',
-                  boxShadow: 'var(--shadow-lg)', zIndex: 1100
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid #E0E0E0' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#263238' }}>Notifications</span>
-                    <span style={{ fontSize: '0.72rem', color: '#28A745', cursor: 'pointer', fontWeight: 600 }}>Mark all read</span>
-                  </div>
-                  {notifications.map(n => (
-                    <div key={n.id} style={{
-                      padding: '0.65rem 0.5rem', borderRadius: 'var(--radius-xs)',
-                      background: n.unread ? '#E8F5E9' : 'transparent',
-                      marginBottom: '0.3rem', cursor: 'pointer',
-                      borderLeft: n.unread ? '3px solid #28A745' : '3px solid transparent'
-                    }}>
-                      <div style={{ fontSize: '0.82rem', color: '#263238', lineHeight: 1.4, fontWeight: n.unread ? 600 : 400 }}>{n.text}</div>
-                      <div style={{ fontSize: '0.72rem', color: '#89939E', marginTop: '0.2rem' }}>{n.time}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -225,8 +165,8 @@ export const Navbar = () => {
               <button
                 onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
                 style={{
-                  background: '#F5F7FA', border: '1px solid #E0E0E0',
-                  color: '#263238', padding: '0.4rem 0.85rem',
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)', padding: '0.4rem 0.85rem',
                   borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem'
                 }}
@@ -249,14 +189,14 @@ export const Navbar = () => {
               {profileOpen && (
                 <div className="glass-panel animate-fade-in" style={{
                   position: 'absolute', top: '44px', right: 0,
-                  width: '220px', padding: '0.5rem', background: '#FFFFFF',
-                  border: '1px solid #E0E0E0',
+                  width: '220px', padding: '0.5rem', background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-color)',
                   boxShadow: 'var(--shadow-lg)', zIndex: 1100
                 }}>
                   {/* User info header */}
-                  <div style={{ padding: '0.75rem', marginBottom: '0.35rem', borderBottom: '1px solid #E0E0E0' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#263238' }}>{user.full_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#4D4D4D' }}>{user.email}</div>
+                  <div style={{ padding: '0.75rem', marginBottom: '0.35rem', borderBottom: '1px solid var(--border-color)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>{user.full_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.email}</div>
                     <div style={{ marginTop: '0.35rem' }}>
                       <span className="badge badge-active" style={{ fontSize: '0.65rem' }}>{user.role?.name}</span>
                     </div>
@@ -265,7 +205,7 @@ export const Navbar = () => {
                   {/* Menu Items */}
                   {[
                     { label: 'My Profile', icon: UserIcon, to: '/profile' },
-                    { label: 'My Events', icon: Ticket, to: '/events' },
+
                     { label: 'Booking Status', icon: Calendar, to: '/status' },
                     ...(user.role?.name === 'ADMINISTRATOR' ? [{ label: 'Admin Settings', icon: Shield, to: '/settings/admin' }, { label: 'Reports', icon: BarChart2, to: '/reports' }] : []),
                   ].map(item => {
@@ -277,13 +217,13 @@ export const Navbar = () => {
                         style={{
                           display: 'flex', alignItems: 'center', gap: '0.65rem',
                           padding: '0.55rem 0.75rem', borderRadius: 'var(--radius-xs)',
-                          color: '#4D4D4D', textDecoration: 'none',
+                          color: 'var(--text-muted)', textDecoration: 'none',
                           fontSize: '0.875rem', fontWeight: 500,
                           transition: 'background 0.15s'
                         }}
                         onClick={() => setProfileOpen(false)}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#F5F7FA'; e.currentTarget.style.color = '#28A745'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4D4D4D'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                       >
                         <Icon size={15} /> {item.label}
                       </Link>

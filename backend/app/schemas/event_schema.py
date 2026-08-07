@@ -158,7 +158,10 @@ class EventRegistrationOut(BaseModel):
     event_id: str
     user_id: str
     ticket_code: str
+    qr_code: Optional[str] = None
+    status: str
     payment_status: str
+    attendance_status: Optional[str] = None
     registered_at: datetime
     event: Optional[EventOut] = None
     user: Optional[UserOut] = None

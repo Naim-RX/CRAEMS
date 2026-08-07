@@ -55,6 +55,8 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_two_factor_enabled = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    password_reset_code = Column(String(6), nullable=True)
+    password_reset_expires = Column(DateTime, nullable=True)
 
     role = relationship("Role", back_populates="users")
     department = relationship("Department", back_populates="users")

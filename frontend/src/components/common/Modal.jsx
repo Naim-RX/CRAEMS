@@ -30,7 +30,7 @@ export const Modal = ({ isOpen, onClose, title, children, maxWidth = '560px' }) 
         overflowY: 'auto',
         padding: '1.75rem',
         position: 'relative',
-        background: '#FFFFFF',
+        background: 'var(--bg-surface)',
         border: '1px solid #E0E0E0',
         boxShadow: 'var(--shadow-lg)',
         margin: 'auto'

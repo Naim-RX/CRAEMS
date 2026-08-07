@@ -13,12 +13,12 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     MYSQL_USER: str = "root"
-    MYSQL_PASSWORD: str = ""
+    MYSQL_PASSWORD: str = "naim.123"
     MYSQL_HOST: str = "127.0.0.1"
     MYSQL_PORT: int = 3306
     MYSQL_DB: str = "craems_db"
 
-    DATABASE_URL: str = "mysql+aiomysql://root:your_password@127.0.0.1:3306/craems_db"
+    DATABASE_URL: str = "mysql+aiomysql://root:naim.123@127.0.0.1:3306/craems_db"
     SQLITE_FALLBACK_URL: str = "sqlite+aiosqlite:///./craems.db"
 
     CORS_ORIGINS: List[str] = [

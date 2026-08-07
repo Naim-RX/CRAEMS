@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
-import { QrCode, Download, X, CheckCircle2, Clock, AlertCircle, Ticket, Calendar, MapPin } from 'lucide-react';
+import { QrCode, Download, X, CheckCircle2, AlertCircle, Ticket, Calendar, MapPin, RefreshCw, Loader } from 'lucide-react';
 
 const RegistrationStatusBadge = ({ status }) => {
   const styles = {
@@ -17,7 +17,7 @@ const RegistrationStatusBadge = ({ status }) => {
   );
 };
 
-export const MyEventsView = ({ registrations = [], onCancelRegistration }) => {
+export const MyEventsView = ({ registrations = [], loading = false, error = null, onRefresh, onCancelRegistration }) => {
   const [qrModal, setQrModal] = useState(null);
   const [cancelConfirm, setCancelConfirm] = useState(null);
 
@@ -32,9 +32,38 @@ export const MyEventsView = ({ registrations = [], onCancelRegistration }) => {
     if (cancelConfirm && onCancelRegistration) {
       await onCancelRegistration(cancelConfirm.id);
       setCancelConfirm(null);
+      if (onRefresh) onRefresh();
     }
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', gap: '1rem' }}>
+        <Loader size={36} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent-primary)' }} />
+        <p style={{ color: 'var(--text-muted)' }}>Loading your registrations...</p>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', textAlign: 'center', gap: '1rem' }}>
+        <AlertCircle size={40} color="#f87171" />
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#f87171' }}>Failed to Load Events</h3>
+        <p style={{ color: 'var(--text-muted)', maxWidth: '380px' }}>{error}</p>
+        {onRefresh && (
+          <button className="btn-primary" onClick={onRefresh} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <RefreshCw size={15} /> Try Again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Empty state
   if (!registrations || registrations.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', textAlign: 'center', gap: '1rem' }}>
@@ -43,6 +72,11 @@ export const MyEventsView = ({ registrations = [], onCancelRegistration }) => {
         <p style={{ color: 'var(--text-muted)', maxWidth: '380px' }}>
           You haven't registered for any campus events yet. Explore upcoming workshops, seminars, and competitions!
         </p>
+        {onRefresh && (
+          <button className="btn-secondary" onClick={onRefresh} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+            <RefreshCw size={14} /> Refresh
+          </button>
+        )}
       </div>
     );
   }
@@ -209,12 +243,12 @@ export const MyEventsView = ({ registrations = [], onCancelRegistration }) => {
               Present this QR code at the event entrance for fast digital check-in
             </div>
 
-            <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
+            <div style={{ background: 'var(--bg-surface)', padding: '1.25rem', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
               {qrModal.qr_code ? (
                 <img src={qrModal.qr_code} alt="QR Ticket" style={{ width: '200px', height: '200px' }} />
               ) : (
-                <div style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '8px' }}>
-                  <QrCode size={80} color="#6366f1" />
+                <div style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                  <QrCode size={80} color="var(--accent-primary)" />
                 </div>
               )}
             </div>
@@ -262,7 +296,7 @@ export const MyEventsView = ({ registrations = [], onCancelRegistration }) => {
             </div>
 
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Are you sure you want to cancel your registration for <strong style={{ color: '#ffffff' }}>{cancelConfirm.event?.title}</strong>?
+              Are you sure you want to cancel your registration for <strong style={{ color: 'var(--text-main)' }}>{cancelConfirm.event?.title}</strong>?
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>

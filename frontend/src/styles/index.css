@@ -9,13 +9,13 @@
   --bg-glass: rgba(255, 255, 255, 0.95);
   --bg-glass-hover: #F5F7FA;
   
-  --text-main: #263238;
+  --text-main: #1A1A1A;
   --text-muted: #4D4D4D;
   --text-dim: #89939E;
 
   --accent-primary: #28A745;
   --accent-primary-hover: #388E3C;
-  --accent-secondary: #263238;
+  --accent-secondary: #1A1A1A;
   --accent-green-light: #E8F5E9;
   --accent-pink: #e91e63;
   --accent-warning: #f59e0b;
@@ -46,12 +46,12 @@
   --bg-glass-hover: rgba(45, 58, 85, 0.95);
   
   --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
+  --text-muted: #a1a1a1;
   --text-dim: #6b7280;
 
   --accent-primary: #28A745;
   --accent-primary-hover: #388E3C;
-  --accent-secondary: #263238;
+  --accent-secondary: #f8fafc;
   --accent-green-light: rgba(40, 167, 69, 0.15);
 
   --border-color: rgba(255, 255, 255, 0.1);
@@ -158,8 +158,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-secondary:hover {
   background: var(--bg-secondary);
-  border-color: #1A1A1A;
-  color: #1A1A1A;
+  border-color: var(--text-main);
+  color: var(--text-main);
 }
 
 .btn-danger {

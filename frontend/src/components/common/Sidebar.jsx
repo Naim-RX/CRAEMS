@@ -32,8 +32,8 @@ export const Sidebar = () => {
   return (
     <aside style={{
       width: '260px',
-      background: '#FFFFFF',
-      borderRight: '1px solid #E0E0E0',
+      background: 'var(--bg-surface)',
+      borderRight: '1px solid var(--border-color)',
       padding: '1.5rem 1rem',
       display: 'flex',
       flexDirection: 'column',
@@ -56,13 +56,13 @@ export const Sidebar = () => {
               gap: '0.85rem',
               padding: '0.75rem 1rem',
               borderRadius: 'var(--radius-sm)',
-              color: isActive ? '#28A745' : '#4D4D4D',
-              background: isActive ? '#E8F5E9' : 'transparent',
+              color: isActive ? 'var(--accent-primary)' : 'var(--text-main)',
+              background: isActive ? 'var(--accent-green-light)' : 'transparent',
               textDecoration: 'none',
               fontWeight: isActive ? 700 : 500,
               fontSize: '0.9rem',
               transition: 'var(--transition-fast)',
-              borderLeft: isActive ? '3px solid #28A745' : '3px solid transparent'
+              borderLeft: isActive ? '3px solid var(--accent-primary)' : '3px solid transparent'
             })}
           >
             <Icon size={18} color={undefined} />

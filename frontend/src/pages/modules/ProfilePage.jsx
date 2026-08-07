@@ -297,7 +297,7 @@ export const ProfilePage = () => {
                 <div style={{
                   position: 'absolute', right: '3px', top: '3px',
                   width: '18px', height: '18px',
-                  borderRadius: '50%', background: 'white'
+                  borderRadius: '50%', background: 'var(--bg-surface)'
                 }} />
               </div>
             </div>

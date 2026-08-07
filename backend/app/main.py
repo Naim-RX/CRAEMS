@@ -57,6 +57,16 @@ async def startup_db_seed():
                 logger.info("Migration: events.room_id set to NULLABLE")
             except Exception as exc:
                 logger.info(f"Migration note: events.room_id (already nullable or N/A): {exc}")
+
+            for statement, column_name in (
+                ("ALTER TABLE users ADD COLUMN password_reset_code VARCHAR(6) NULL", "users.password_reset_code"),
+                ("ALTER TABLE users ADD COLUMN password_reset_expires DATETIME NULL", "users.password_reset_expires"),
+            ):
+                try:
+                    await conn.execute(text(statement))
+                    logger.info(f"Migration: added {column_name}")
+                except Exception as exc:
+                    logger.info(f"Migration note: {column_name} already exists or is unavailable: {exc}")
     except Exception as exc:
         logger.warning(f"Migration block skipped (non-MySQL or schema N/A): {exc}")
 
