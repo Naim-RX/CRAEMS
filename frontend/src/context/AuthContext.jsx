@@ -14,7 +14,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedPassword = password.trim();
+      const response = await api.post('/auth/login', { email: normalizedEmail, password: normalizedPassword });
       const { access_token, refresh_token, user: userData } = response.data;
 
       localStorage.setItem('craems_access_token', access_token);
@@ -25,7 +27,11 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       return { success: true, user: userData };
     } catch (error) {
-      const msg = error.response?.data?.detail || 'Authentication failed.';
+      const msg =
+        error.response?.data?.detail ||
+        error.response?.statusText ||
+        error.message ||
+        'Authentication failed.';
       return { success: false, error: msg };
     } finally {
       setLoading(false);

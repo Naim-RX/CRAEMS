@@ -16,12 +16,13 @@ import { EventStats } from '../../components/events/EventStats';
 import { EventDetailsModal } from '../../components/events/EventDetailsModal';
 import { MyEventsView } from '../../components/events/MyEventsView';
 import { EventFormModal } from '../../components/events/EventFormModal';
+import { VenueFormModal } from '../../components/events/VenueFormModal';
 import { Modal } from '../../components/common/Modal';
 import { QRScannerModal } from '../../components/common/QRScannerModal';
 
 import {
   LayoutGrid, Calendar, AlignLeft, Ticket, QrCode, Plus, Bell,
-  BarChart2, CheckCircle2, Download, RefreshCw, User as UserIcon
+  BarChart2, CheckCircle2, Download, RefreshCw, User as UserIcon, Building2
 } from 'lucide-react';
 
 // ────────────────────────────────────────────────
@@ -117,7 +118,7 @@ const VIEW_TABS = [
 // ────────────────────────────────────────────────
 // Admin Quick Action Panel
 // ────────────────────────────────────────────────
-const AdminControlPanel = ({ onCreateEvent, onOpenScanner }) => (
+const AdminControlPanel = ({ onCreateEvent, onOpenScanner, onAddVenue }) => (
   <div className="glass-panel" style={{
     padding: '1.25rem 1.5rem',
     background: 'linear-gradient(135deg, rgba(30,27,75,0.6) 0%, rgba(15,23,42,0.8) 100%)',
@@ -129,6 +130,9 @@ const AdminControlPanel = ({ onCreateEvent, onOpenScanner }) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
       <button className="btn-primary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }} onClick={onCreateEvent}>
         <Plus size={15} /> Create Event
+      </button>
+      <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }} onClick={onAddVenue}>
+        <Building2 size={15} /> Add Venue / Room
       </button>
       <button className="btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }} onClick={onOpenScanner}>
         <QrCode size={15} /> QR Scanner
@@ -198,13 +202,18 @@ const SkeletonCard = () => (
 export const EventManagementPage = () => {
   const { user } = useAuth();
 
-  // State
+// State
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [categories, setCategories] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [stats, setStats] = useState({});
   const [myRegistrations, setMyRegistrations] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [floors, setFloors] = useState([]);
+  const [roomTypes, setRoomTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('');
 
@@ -213,6 +222,7 @@ export const EventManagementPage = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isVenueModalOpen, setIsVenueModalOpen] = useState(false);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const [ticketModal, setTicketModal] = useState(null);
   const [toast, setToast] = useState(null);
@@ -272,20 +282,63 @@ export const EventManagementPage = () => {
   const fetchMyRegistrations = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await api.get('/events/user/my-registrations');
+      const res = await api.get(`/events/user/my-registrations?user_id=${user.id}`);
       setMyRegistrations(res.data || []);
     } catch {
       setMyRegistrations([]);
     }
   }, [user]);
 
+  // Fetch rooms, departments, and venue-building metadata for filters & form
+  const fetchRooms = useCallback(async () => {
+    try {
+      const res = await api.get('/rooms?is_active=true');
+      setRooms(res.data || []);
+    } catch {
+      setRooms([]);
+    }
+  }, []);
+
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/departments');
+      setDepartments(res.data || []);
+    } catch {
+      setDepartments([]);
+    }
+  }, []);
+
+const buildFallbackFloors = () => {
+    // Provide generic floors 1-4 as a fallback when floor API is not exposed
+    return [1, 2, 3, 4].map(n => ({ id: n, floor_number: n, floor_name: `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'} Floor` }));
+  };
+
+  const fetchVenueMeta = useCallback(async () => {
+    try {
+      const [bRes, tRes] = await Promise.allSettled([
+        api.get('/rooms/buildings'),
+        api.get('/rooms/types')
+      ]);
+      if (bRes.status === 'fulfilled') {
+        setBuildings(bRes.value.data || []);
+      }
+      if (tRes.status === 'fulfilled') setRoomTypes(tRes.value.data || []);
+      // Floors fallback (generic 1-4) when a dedicated floors endpoint is unavailable
+      setFloors(prev => prev.length > 0 ? prev : buildFallbackFloors());
+    } catch {
+      setBuildings([]);
+      setRoomTypes([]);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
-      await Promise.all([fetchEvents(), fetchCategories(), fetchAnnouncements(), fetchStats(), fetchMyRegistrations()]);
+      await Promise.all([fetchEvents(), fetchCategories(), fetchAnnouncements(), fetchStats(), fetchMyRegistrations(), fetchRooms(), fetchDepartments(), fetchVenueMeta()]);
       setLoading(false);
     };
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Filter Handler ─────────────────────────────
@@ -298,11 +351,18 @@ export const EventManagementPage = () => {
       result = result.filter(e => e.title?.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q));
     }
     if (f.category) result = result.filter(e => String(e.category?.id) === String(f.category));
-    if (f.mode) result = result.filter(e => e.event_mode === f.mode);
-    if (f.price) result = result.filter(e => e.price_type === f.price);
+    if (f.department) result = result.filter(e => String(e.department?.id) === String(f.department));
+    if (f.venue) result = result.filter(e => String(e.room?.id) === String(f.venue) || String(e.room_id) === String(f.venue));
+    if (f.mode && f.mode !== 'ALL') result = result.filter(e => e.event_mode === f.mode);
+    if (f.price && f.price !== 'ALL') result = result.filter(e => e.price_type === f.price);
     if (f.sort === 'latest') result.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
     if (f.sort === 'upcoming') result.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
     if (f.sort === 'popular') result.sort((a, b) => (b.registered_count || 0) - (a.registered_count || 0));
+    if (f.sort === 'deadline') result.sort((a, b) => {
+      const da = a.registration_deadline ? new Date(a.registration_deadline).getTime() : Infinity;
+      const db = b.registration_deadline ? new Date(b.registration_deadline).getTime() : Infinity;
+      return da - db;
+    });
 
     setFilteredEvents(result);
   }, [events]);
@@ -345,11 +405,23 @@ export const EventManagementPage = () => {
 
   // ── Event Create / Request ─────────────────────
   const handleEventSubmit = async (formData) => {
-    const endpoint = canCreateEvent ? '/events' : '/events';
+    if (!user) {
+      showToast('Please sign in to create or request an event.', 'error');
+      throw new Error('Not authenticated');
+    }
+    const endpoint = `/events?organizer_id=${user.id}`;
     const payload = { ...formData, status: canCreateEvent ? 'PUBLISHED' : 'PENDING_APPROVAL' };
     const res = await api.post(endpoint, payload);
     showToast(canCreateEvent ? 'Event created and published!' : 'Event request submitted for review!', 'success');
     await fetchEvents();
+    return res.data;
+  };
+
+  // ── Venue / Room Creation (Admin) ──────────────
+  const handleCreateVenue = async (roomData) => {
+    const res = await api.post('/rooms', roomData);
+    showToast('Venue created successfully!', 'success');
+    await fetchRooms();
     return res.data;
   };
 
@@ -382,6 +454,7 @@ export const EventManagementPage = () => {
       {isAdmin && (
         <AdminControlPanel
           onCreateEvent={() => setIsFormModalOpen(true)}
+          onAddVenue={() => setIsVenueModalOpen(true)}
           onOpenScanner={() => setIsQRScannerOpen(true)}
         />
       )}
@@ -419,6 +492,8 @@ export const EventManagementPage = () => {
       {/* ── STICKY FILTERS ───────────────────── */}
       <EventFilters
         categories={categories}
+        departments={departments}
+        rooms={rooms}
         onFiltersChange={handleFiltersChange}
       />
 
@@ -532,13 +607,25 @@ export const EventManagementPage = () => {
         onRegister={handleRegister}
       />
 
-      {/* Event Create/Request Form Modal */}
+{/* Event Create/Request Form Modal */}
       <EventFormModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
         userRole={user?.role?.name}
         onSubmit={handleEventSubmit}
         categories={categories}
+        rooms={rooms}
+        departments={departments}
+      />
+
+      {/* Admin Venue / Room Creation Modal */}
+      <VenueFormModal
+        isOpen={isVenueModalOpen}
+        onClose={() => setIsVenueModalOpen(false)}
+        onRoomCreated={handleCreateVenue}
+        buildings={buildings}
+        floors={floors}
+        roomTypes={roomTypes}
       />
 
       {/* Generated Ticket QR Modal (post-registration) */}

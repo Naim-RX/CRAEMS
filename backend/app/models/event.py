@@ -23,7 +23,7 @@ class Event(Base):
     category_id = Column(Integer, ForeignKey("event_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True, index=True)
     organizer_id = Column(String(36), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
-    room_id = Column(String(36), ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=False)
+    room_id = Column(String(36), ForeignKey("rooms.id", ondelete="RESTRICT"), nullable=True)
     start_time = Column(DateTime, nullable=False, index=True)
     end_time = Column(DateTime, nullable=False)
     registration_deadline = Column(DateTime, nullable=True)

@@ -4,13 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
-from app.models.user import User, Role
+from app.models.user import User, Role, Department
 from app.models.system import AuditLog
 from app.models.booking import RoomBooking
 from app.models.equipment import EquipmentReservation, Equipment
 from app.models.event import Event
 from app.models.facility import Room
-from app.schemas.user_schema import UserOut
+from app.schemas.user_schema import UserOut, DepartmentOut
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -20,6 +20,12 @@ class ReviewRequestPayload(BaseModel):
     request_id: str
     action: str # APPROVE, REJECT
     comments: Optional[str] = None
+
+@router.get("/departments", response_model=List[DepartmentOut])
+async def list_departments(db: AsyncSession = Depends(get_db)):
+    stmt = select(Department).order_by(Department.name.asc())
+    res = await db.execute(stmt)
+    return res.scalars().all()
 
 @router.get("/users", response_model=List[UserOut])
 async def list_all_users(db: AsyncSession = Depends(get_db)):

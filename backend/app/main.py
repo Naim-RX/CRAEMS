@@ -1,7 +1,8 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.core.config import settings
 from app.core.database import engine, Base, AsyncSessionLocal
 from app.core.security import get_password_hash
@@ -46,6 +47,18 @@ async def startup_db_seed():
 
     async with _db.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # ── Schema migrations for existing deployments ──────────────────────────
+    try:
+        async with _db.engine.begin() as conn:
+            # Make events.room_id nullable (online events / requests before venue is assigned)
+            try:
+                await conn.execute(text("ALTER TABLE events MODIFY COLUMN room_id VARCHAR(36) NULL"))
+                logger.info("Migration: events.room_id set to NULLABLE")
+            except Exception as exc:
+                logger.info(f"Migration note: events.room_id (already nullable or N/A): {exc}")
+    except Exception as exc:
+        logger.warning(f"Migration block skipped (non-MySQL or schema N/A): {exc}")
 
     # Always use the current (possibly updated) session factory
     async with _db.AsyncSessionLocal() as db:

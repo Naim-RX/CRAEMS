@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
-import { Plus, Upload, Calendar, Users, MapPin, Tag, Briefcase, DollarSign, Clock, FileText, Sparkles } from 'lucide-react';
+import { Plus, Upload, Calendar, Users, MapPin, Tag, Briefcase, DollarSign, Clock, FileText, Sparkles, Building2 } from 'lucide-react';
 
 const ROLES_CAN_CREATE = ['ADMINISTRATOR', 'EVENT_ORGANIZER', 'RESOURCE_MANAGER'];
 const ROLES_CAN_REQUEST = ['FACULTY', 'STUDENT'];
 
-export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories = [], rooms = [] }) => {
+export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories = [], rooms = [], departments = [] }) => {
   const isAdmin = ROLES_CAN_CREATE.includes(userRole);
 
   const [form, setForm] = useState({
     title: '',
     description: '',
     category_id: '',
+    department_id: '',
     room_id: '',
     start_time: '',
     end_time: '',
@@ -33,30 +34,57 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
+  // Normalize empty strings → null for optional DB fields so Pydantic/FastAPI doesn't reject them
+  const normalizeForm = (f) => ({
+    ...f,
+    category_id: f.category_id === '' ? null : Number(f.category_id),
+    department_id: f.department_id === '' ? null : Number(f.department_id),
+    room_id: f.room_id === '' ? null : f.room_id,
+    registration_deadline: f.registration_deadline === '' ? null : f.registration_deadline,
+    end_time: f.end_time === '' ? null : f.end_time,
+    price_amount: f.price_type === 'FREE' ? 0 : Number(f.price_amount) || 0,
+    max_seats: Number(f.max_seats) || 1,
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) { setError('Event title is required.'); return; }
     if (!form.start_time) { setError('Event start date/time is required.'); return; }
+    if (form.event_mode !== 'ONLINE' && !form.room_id) {
+      setError('Please assign a venue / room for this in-person event.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
-      await onSubmit(form);
+      const payload = normalizeForm(form);
+      await onSubmit(payload);
       onClose();
       setForm({
-        title: '', description: '', category_id: '', room_id: '',
+        title: '', description: '', category_id: '', department_id: '', room_id: '',
         start_time: '', end_time: '', registration_deadline: '',
         max_seats: 50, event_mode: 'OFFLINE', price_type: 'FREE',
         price_amount: 0, is_public: true, cover_image: '', organizer_notes: ''
       });
     } catch (err) {
-      setError(err.message || 'Submission failed. Please try again.');
+      setError(err.response?.data?.detail || err.message || 'Submission failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const resetForm = () => {
+    setForm({
+      title: '', description: '', category_id: '', department_id: '', room_id: '',
+      start_time: '', end_time: '', registration_deadline: '',
+      max_seats: 50, event_mode: 'OFFLINE', price_type: 'FREE',
+      price_amount: 0, is_public: true, cover_image: '', organizer_notes: ''
+    });
+    setError('');
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isAdmin ? '✨ Create New Event' : '📋 Request Event Organization'} maxWidth="700px">
+    <Modal isOpen={isOpen} onClose={() => { onClose(); resetForm(); }} title={isAdmin ? '✨ Create New Event' : '📋 Request Event Organization'} maxWidth="700px">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
         {/* Header Context Banner */}
@@ -147,8 +175,18 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
           </div>
         </div>
 
-        {/* Row 6: Price Type */}
+        {/* Row 6: Department + Price Type */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label"><Building2 size={13} style={{ display: 'inline', marginRight: '4px' }} />Department</label>
+            <select name="department_id" value={form.department_id} onChange={handleChange} className="form-select">
+              <option value="">-- Select Department --</option>
+              {departments.length > 0 && departments.map(d => (
+                <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+              ))}
+            </select>
+          </div>
+
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label"><DollarSign size={13} style={{ display: 'inline', marginRight: '4px' }} />Price Type</label>
             <select name="price_type" value={form.price_type} onChange={handleChange} className="form-select">
@@ -156,28 +194,35 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
               <option value="PAID">Paid Entry</option>
             </select>
           </div>
-          {form.price_type === 'PAID' && (
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Registration Fee ($)</label>
-              <input name="price_amount" value={form.price_amount} onChange={handleChange} type="number" min={0} step={0.01} className="form-input" />
+        </div>
+
+        {/* Row 7: Price Amount (only when PAID) */}
+        {form.price_type === 'PAID' && (
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Registration Fee ($)</label>
+            <input name="price_amount" value={form.price_amount} onChange={handleChange} type="number" min={0} step={0.01} className="form-input" />
+          </div>
+        )}
+
+        {/* Row 8: Venue (Room) — available for ALL roles (admin assigns, faculty/student requests) */}
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label"><MapPin size={13} style={{ display: 'inline', marginRight: '4px' }} />Assign Venue / Room {form.event_mode !== 'ONLINE' && <span style={{ color: '#f87171' }}>*</span>}</label>
+          <select name="room_id" value={form.room_id} onChange={handleChange} className="form-select">
+            <option value="">-- Select Room / Venue --</option>
+            {rooms.length > 0 ? rooms.map(r => (
+              <option key={r.id} value={r.id}>Room {r.room_number} — {r.building?.name || 'Campus'} (Cap: {r.capacity})</option>
+            )) : (
+              <option value="" disabled>No venues available — contact an administrator</option>
+            )}
+          </select>
+          {form.event_mode === 'ONLINE' && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.3rem' }}>
+              Optional for online events — you can leave it unassigned.
             </div>
           )}
         </div>
 
-        {/* Row 7: Venue (Room) - Admin only */}
-        {isAdmin && (
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label"><MapPin size={13} style={{ display: 'inline', marginRight: '4px' }} />Assign Venue / Room</label>
-            <select name="room_id" value={form.room_id} onChange={handleChange} className="form-select">
-              <option value="">-- Select Room / Venue --</option>
-              {rooms.map(r => (
-                <option key={r.id} value={r.id}>Room {r.room_number} — {r.building?.name} (Cap: {r.capacity})</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Row 8: Cover Image URL (Admin) */}
+        {/* Row 9: Cover Image URL (Admin) */}
         {isAdmin && (
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label"><Upload size={13} style={{ display: 'inline', marginRight: '4px' }} />Cover Image URL</label>
@@ -188,7 +233,7 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
           </div>
         )}
 
-        {/* Row 9: Notes (non-admin) */}
+        {/* Row 10: Notes (non-admin) */}
         {!isAdmin && (
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Additional Notes for Organizer Review</label>
@@ -218,7 +263,7 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
 
         {/* Submit Buttons */}
         <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
-          <button type="button" className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={onClose}>
+          <button type="button" className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onClose(); resetForm(); }}>
             Cancel
           </button>
           <button
@@ -238,3 +283,4 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
     </Modal>
   );
 };
+

@@ -69,9 +69,9 @@ class EventCreate(BaseModel):
     description: str
     category_id: Optional[int] = None
     department_id: Optional[int] = None
-    room_id: str
+    room_id: Optional[str] = None
     start_time: datetime
-    end_time: datetime
+    end_time: Optional[datetime] = None
     registration_deadline: Optional[datetime] = None
     max_seats: int
     event_mode: Optional[str] = "OFFLINE"
@@ -107,7 +107,7 @@ class EventOut(BaseModel):
     category_id: Optional[int] = None
     department_id: Optional[int] = None
     organizer_id: str
-    room_id: str
+    room_id: Optional[str] = None
     start_time: datetime
     end_time: datetime
     registration_deadline: Optional[datetime] = None

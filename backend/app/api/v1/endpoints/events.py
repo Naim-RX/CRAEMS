@@ -106,7 +106,11 @@ async def list_events(
         select(Event)
         .options(
             selectinload(Event.room).selectinload(Room.building),
-            selectinload(Event.organizer),
+            selectinload(Event.room).selectinload(Room.floor),
+            selectinload(Event.room).selectinload(Room.room_type),
+            selectinload(Event.room).selectinload(Room.images),
+            selectinload(Event.organizer).selectinload(User.role),
+            selectinload(Event.organizer).selectinload(User.department),
             selectinload(Event.category),
             selectinload(Event.speakers),
             selectinload(Event.gallery),
@@ -192,7 +196,11 @@ async def get_event_detail(event_id: str, db: AsyncSession = Depends(get_db)):
         select(Event)
         .options(
             selectinload(Event.room).selectinload(Room.building),
-            selectinload(Event.organizer),
+            selectinload(Event.room).selectinload(Room.floor),
+            selectinload(Event.room).selectinload(Room.room_type),
+            selectinload(Event.room).selectinload(Room.images),
+            selectinload(Event.organizer).selectinload(User.role),
+            selectinload(Event.organizer).selectinload(User.department),
             selectinload(Event.category),
             selectinload(Event.speakers),
             selectinload(Event.gallery),
@@ -236,7 +244,7 @@ async def create_or_request_event(
         organizer_id=organizer_id,
         room_id=event_in.room_id,
         start_time=event_in.start_time,
-        end_time=event_in.end_time,
+        end_time=event_in.end_time or event_in.start_time,
         registration_deadline=event_in.registration_deadline or event_in.start_time,
         max_seats=event_in.max_seats,
         event_mode=event_in.event_mode or "OFFLINE",
@@ -251,21 +259,39 @@ async def create_or_request_event(
     await db.commit()
     await db.refresh(event)
 
-    stmt = (
-        select(Event)
-        .options(
-            selectinload(Event.room).selectinload(Room.building),
-            selectinload(Event.organizer),
-            selectinload(Event.category),
-            selectinload(Event.speakers),
-            selectinload(Event.gallery)
-        )
-        .where(Event.id == event.id)
-    )
-    res = await db.execute(stmt)
-    evt = res.scalars().first()
-    evt.registered_count = 0
-    return evt
+    from sqlalchemy.orm import joinedload
+
+    return {
+        "id": event.id,
+        "title": event.title,
+        "description": event.description,
+        "category_id": event.category_id,
+        "department_id": event.department_id,
+        "organizer_id": event.organizer_id,
+        "room_id": event.room_id,
+        "start_time": event.start_time,
+        "end_time": event.end_time,
+        "registration_deadline": event.registration_deadline,
+        "max_seats": event.max_seats,
+        "event_mode": event.event_mode,
+        "price_type": event.price_type,
+        "price_amount": event.price_amount,
+        "cover_image": event.cover_image,
+        "status": event.status,
+        "is_public": event.is_public,
+        "is_published": event.is_published,
+        "is_deleted": event.is_deleted,
+        "created_at": event.created_at,
+        "room": None,
+        "organizer": None,
+        "category": None,
+        "speakers": [],
+        "gallery": [],
+        "announcements": [],
+        "sponsors": [],
+        "faqs": [],
+        "registered_count": 0,
+    }
 
 @router.put("/{event_id}", response_model=EventOut)
 async def update_event(
@@ -289,7 +315,11 @@ async def update_event(
         select(Event)
         .options(
             selectinload(Event.room).selectinload(Room.building),
-            selectinload(Event.organizer),
+            selectinload(Event.room).selectinload(Room.floor),
+            selectinload(Event.room).selectinload(Room.room_type),
+            selectinload(Event.room).selectinload(Room.images),
+            selectinload(Event.organizer).selectinload(User.role),
+            selectinload(Event.organizer).selectinload(User.department),
             selectinload(Event.category),
             selectinload(Event.speakers)
         )

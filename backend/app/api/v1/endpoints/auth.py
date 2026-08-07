@@ -12,8 +12,10 @@ router = APIRouter()
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
+    normalized_email = user_in.email.strip().lower()
+
     # Check if email exists
-    existing = await db.execute(select(User).where(User.email == user_in.email))
+    existing = await db.execute(select(User).where(User.email == normalized_email))
     if existing.scalars().first():
         raise HTTPException(status_code=400, detail="User with this email already exists.")
 
@@ -32,7 +34,7 @@ async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
 
     new_user = User(
         full_name=user_in.full_name,
-        email=user_in.email,
+        email=normalized_email,
         password_hash=get_password_hash(user_in.password),
         phone=user_in.phone,
         department_id=user_in.department_id,
@@ -53,13 +55,14 @@ async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
+    normalized_email = credentials.email.strip().lower()
     result = await db.execute(
         select(User)
         .options(
             selectinload(User.role),
             selectinload(User.department)
         )
-        .where(User.email == credentials.email)
+        .where(User.email == normalized_email)
     )
     user = result.scalars().first()
     if not user or not verify_password(credentials.password, user.password_hash):
