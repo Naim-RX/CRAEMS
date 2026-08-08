@@ -36,16 +36,6 @@ export const Navbar = () => {
     navigate('/login');
   };
 
-  const getDashboardRoute = () => {
-    if (!user) return '/login';
-    switch (user.role?.name) {
-      case 'ADMINISTRATOR': return '/dashboard/admin';
-      case 'RESOURCE_MANAGER': return '/dashboard/manager';
-      case 'FACULTY': return '/dashboard/faculty';
-      default: return '/dashboard/student';
-    }
-  };
-
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   const navLinkStyle = (path) => ({
@@ -112,19 +102,6 @@ export const Navbar = () => {
             </span>
           </div>
         </Link>
-
-        {/* ── CENTER: Navigation Links ────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flex: 1, justifyContent: 'center' }}>
-          <Link to="/rooms" style={navLinkStyle('/rooms')}>Facilities</Link>
-          <Link to="/equipment" style={navLinkStyle('/equipment')}>Equipment</Link>
-          <Link to="/events" style={navLinkStyle('/events')}>
-            <Calendar size={15} /> Events
-          </Link>
-
-          {user && (
-            <Link to={getDashboardRoute()} style={navLinkStyle(getDashboardRoute())}>Dashboard</Link>
-          )}
-        </div>
 
         {/* ── RIGHT: Actions ──────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
