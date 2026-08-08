@@ -466,9 +466,17 @@ async def register_event(
         status="REGISTERED",
         payment_status="COMPLETED" if event.price_type == "FREE" else "PENDING"
     )
-    db.add(registration)
-    await db.commit()
-    await db.refresh(registration)
+
+    # Explicit transaction handling
+    transaction = await db.begin()
+    try:
+        db.add(registration)
+        await db.flush()  # assign ID
+        await db.refresh(registration)
+        await transaction.commit()
+    except Exception as e:
+        await transaction.rollback()
+        raise HTTPException(status_code=500, detail="Registration failed: " + str(e))
 
     return {
         "registration_id": registration.id,
