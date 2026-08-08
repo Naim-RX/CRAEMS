@@ -227,10 +227,22 @@ async def create_or_request_event(
     organizer_id: str = Query(..., description="User ID requesting/creating event"),
     db: AsyncSession = Depends(get_db)
 ):
+    from app.services.booking_service import BookingService
+
     user_res = await db.execute(select(User).options(selectinload(User.role)).where(User.id == organizer_id))
     user = user_res.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
+
+    if event_in.room_id:
+        conflict = await BookingService.check_conflict(
+            db=db,
+            room_id=event_in.room_id,
+            start_time=event_in.start_time,
+            end_time=event_in.end_time or event_in.start_time
+        )
+        if conflict:
+            raise HTTPException(status_code=409, detail="Room is already booked or hosting another event during this time.")
 
     role_name = user.role.name if user.role else "STUDENT"
     # Admin / Manager / Organizer creates published directly; Faculty & Student request PENDING_APPROVAL
@@ -299,11 +311,30 @@ async def update_event(
     event_in: EventUpdate,
     db: AsyncSession = Depends(get_db)
 ):
+    from app.services.booking_service import BookingService
+
     stmt = select(Event).where(Event.id == event_id, Event.is_deleted == False)
     res = await db.execute(stmt)
     event = res.scalars().first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found.")
+
+    if event_in.room_id or getattr(event, 'room_id', None):
+        room_id_to_check = event_in.room_id if event_in.room_id else event.room_id
+        if room_id_to_check:
+            start_to_check = event_in.start_time if getattr(event_in, 'start_time', None) else event.start_time
+            end_to_check = event_in.end_time if getattr(event_in, 'end_time', None) else (event.end_time or event.start_time)
+            
+            # Use a fresh db session or ensure check_conflict doesn't conflict with current transaction if we didn't mutate yet.
+            conflict = await BookingService.check_conflict(
+                db=db,
+                room_id=room_id_to_check,
+                start_time=start_to_check,
+                end_time=end_to_check
+            )
+            # If the conflict is the event itself, ignore
+            if conflict and getattr(conflict, 'id', None) != event.id:
+                raise HTTPException(status_code=409, detail="Room is already booked or hosting another event during this time.")
 
     for field, val in event_in.model_dump(exclude_unset=True).items():
         setattr(event, field, val)
@@ -321,7 +352,11 @@ async def update_event(
             selectinload(Event.organizer).selectinload(User.role),
             selectinload(Event.organizer).selectinload(User.department),
             selectinload(Event.category),
-            selectinload(Event.speakers)
+            selectinload(Event.speakers),
+            selectinload(Event.gallery),
+            selectinload(Event.announcements),
+            selectinload(Event.sponsors),
+            selectinload(Event.faqs)
         )
         .where(Event.id == event.id)
     )
@@ -352,22 +387,40 @@ async def review_event_request(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found.")
 
-    if review_in.action == "APPROVE":
+    is_approved = (review_in.action == "APPROVE")
+    if is_approved:
         event.status = "PUBLISHED"
         event.is_published = True
     else:
         event.status = "REJECTED"
         event.is_published = False
 
+    from app.models.system import Notification
+    notif_title = f"Event Request {'Approved' if is_approved else 'Rejected'}"
+    notif_msg = f"Your event '{event.title}' has been {'approved and published' if is_approved else 'rejected'}."
+    if review_in.comments:
+        notif_msg += f" Note: {review_in.comments}"
+    db.add(Notification(user_id=event.organizer_id, title=notif_title, message=notif_msg))
+
     await db.commit()
     await db.refresh(event)
+
 
     stmt = (
         select(Event)
         .options(
             selectinload(Event.room).selectinload(Room.building),
-            selectinload(Event.organizer),
-            selectinload(Event.category)
+            selectinload(Event.room).selectinload(Room.floor),
+            selectinload(Event.room).selectinload(Room.room_type),
+            selectinload(Event.room).selectinload(Room.images),
+            selectinload(Event.organizer).selectinload(User.role),
+            selectinload(Event.organizer).selectinload(User.department),
+            selectinload(Event.category),
+            selectinload(Event.speakers),
+            selectinload(Event.gallery),
+            selectinload(Event.announcements),
+            selectinload(Event.sponsors),
+            selectinload(Event.faqs)
         )
         .where(Event.id == event.id)
     )
@@ -460,6 +513,23 @@ async def cancel_registration(
     reg.status = "CANCELLED"
     await db.commit()
     return {"message": "Event registration cancelled successfully."}
+
+@router.get("/{event_id}/registrations", response_model=List[EventRegistrationOut])
+async def list_event_registrations(event_id: str, db: AsyncSession = Depends(get_db)):
+    """List all registered students / participants for a specific event."""
+    stmt = (
+        select(EventRegistration)
+        .options(
+            selectinload(EventRegistration.user).selectinload(User.role),
+            selectinload(EventRegistration.user).selectinload(User.department),
+            selectinload(EventRegistration.attendance),
+            selectinload(EventRegistration.certificate)
+        )
+        .where(EventRegistration.event_id == event_id)
+        .order_by(EventRegistration.registered_at.desc())
+    )
+    res = await db.execute(stmt)
+    return res.scalars().all()
 
 @router.get("/{event_id}/export-participants", response_class=PlainTextResponse)
 async def export_participants(event_id: str, db: AsyncSession = Depends(get_db)):

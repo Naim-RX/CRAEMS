@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Plus, CheckCircle, ShieldAlert, Clock } from 'lucide-react';
+import { Box, Plus, CheckCircle, ShieldAlert, Clock, Edit } from 'lucide-react';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { CalendarDatePicker } from '../../components/common/CalendarDatePicker';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -34,6 +35,15 @@ export const EquipmentManagementPage = () => {
   const [newCategoryId, setNewCategoryId] = useState(1);
   const [newCondition, setNewCondition] = useState('EXCELLENT');
   const [addEqMsg, setAddEqMsg] = useState('');
+
+  // Admin Edit Equipment state
+  const [isEditEqModalOpen, setIsEditEqModalOpen] = useState(false);
+  const [editEqId, setEditEqId] = useState(null);
+  const [editSerial, setEditSerial] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState(1);
+  const [editCondition, setEditCondition] = useState('EXCELLENT');
+  const [editEqMsg, setEditEqMsg] = useState('');
 
   const fetchEquipmentData = async () => {
     try {
@@ -77,6 +87,38 @@ export const EquipmentManagementPage = () => {
       setAddEqMsg(err.response?.data?.detail || 'Failed to add equipment.');
     }
   };
+
+  const openEditModal = (item) => {
+    setEditEqId(item.id);
+    setEditSerial(item.serial_number);
+    setEditName(item.name);
+    setEditCategoryId(item.category_id || item.category?.id || 1);
+    setEditCondition(item.condition);
+    setEditEqMsg('');
+    setIsEditEqModalOpen(true);
+  };
+
+  const handleEditEquipmentSubmit = async (e) => {
+    e.preventDefault();
+    setEditEqMsg('');
+    try {
+      await api.put(`/equipment/${editEqId}`, {
+        serial_number: editSerial,
+        name: editName,
+        category_id: Number(editCategoryId),
+        condition: editCondition
+      });
+      setEditEqMsg('Equipment updated successfully!');
+      setTimeout(() => {
+        setIsEditEqModalOpen(false);
+        setEditEqMsg('');
+        fetchEquipmentData();
+      }, 1000);
+    } catch (err) {
+      setEditEqMsg(err.response?.data?.detail || 'Failed to update equipment.');
+    }
+  };
+
 
   const isSlotBooked = (slot, dateStr, eqId) => {
     if (!dateStr || !eqId) return false;
@@ -153,7 +195,6 @@ export const EquipmentManagementPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem' }}>Serialized Campus Equipment Inventory</h1>
-          <p style={{ color: 'var(--text-muted)' }}>AV gear, laboratory instruments, and portable hardware reservations</p>
         </div>
         {user?.role?.name === 'ADMINISTRATOR' && (
           <button className="btn-primary" onClick={() => { setAddEqMsg(''); setIsAddEqModalOpen(true); }}>
@@ -182,13 +223,32 @@ export const EquipmentManagementPage = () => {
                   <td>{item.category?.name}</td>
                   <td><StatusBadge status={item.condition} /></td>
                   <td>
-                    <button
-                      className="btn-primary"
-                      style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
-                      onClick={() => openReserveModal(item)}
-                    >
-                      {isStudent ? 'Request Equipment' : 'Reserve Gear'}
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button
+                        className="btn-primary"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                        onClick={() => openReserveModal(item)}
+                      >
+                        {isStudent ? 'Request Equipment' : 'Reserve Gear'}
+                      </button>
+                      {user?.role?.name === 'ADMINISTRATOR' && (
+                        <button
+                          onClick={() => openEditModal(item)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--text-muted)',
+                            padding: '4px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="Edit Equipment"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -212,13 +272,12 @@ export const EquipmentManagementPage = () => {
 
             <div className="form-group">
               <label className="form-label">Reservation Date</label>
-              <input
-                type="date"
-                className="form-input"
+              <CalendarDatePicker
                 value={reserveDate}
                 min={todayStr}
-                onChange={(e) => setReserveDate(e.target.value)}
+                onChange={(val) => setReserveDate(val)}
                 required
+                placeholder="Select reservation date..."
               />
             </div>
 
@@ -242,10 +301,10 @@ export const EquipmentManagementPage = () => {
                   let labelText = slot.label;
 
                   if (booked) {
-                    bg = 'rgba(239, 68, 68, 0.18)';
-                    border = '1px solid rgba(239, 68, 68, 0.4)';
-                    color = '#f87171';
-                    labelText = `${slot.label} (RESERVED)`;
+                    bg = '#dc2626'; // Solid red
+                    border = '1px solid #b91c1c';
+                    color = '#ffffff';
+                    labelText = `${slot.label} (BOOKED)`;
                   } else if (isSelected) {
                     bg = 'rgba(99, 102, 241, 0.25)';
                     border = '1px solid var(--accent-primary)';
@@ -269,7 +328,7 @@ export const EquipmentManagementPage = () => {
                         border,
                         background: bg,
                         color,
-                        opacity: booked ? 0.85 : 1,
+                        opacity: 1,
                         transition: 'all 0.15s ease'
                       }}
                     >
@@ -337,6 +396,60 @@ export const EquipmentManagementPage = () => {
 
           <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
             Create Equipment Item
+          </button>
+        </form>
+      </Modal>
+
+      {/* Admin Edit Equipment Modal */}
+      <Modal isOpen={isEditEqModalOpen} onClose={() => setIsEditEqModalOpen(false)} title="Edit Serialized Equipment">
+        {editEqMsg && (
+          <div style={{
+            padding: '0.75rem',
+            borderRadius: 'var(--radius-sm)',
+            background: editEqMsg.includes('successfully') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            color: editEqMsg.includes('successfully') ? '#34d399' : '#f87171',
+            fontSize: '0.85rem',
+            marginBottom: '1rem'
+          }}>
+            {editEqMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleEditEquipmentSubmit}>
+          <div className="form-group">
+            <label className="form-label">Serial Tag Number</label>
+            <input type="text" className="form-input" placeholder="e.g. SN-AV-9988" value={editSerial} onChange={(e) => setEditSerial(e.target.value)} required />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Equipment Name</label>
+            <input type="text" className="form-input" placeholder="e.g. Sony 4K Camera" value={editName} onChange={(e) => setEditName(e.target.value)} required />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Category</label>
+              <select className="form-select" value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)}>
+                <option value={1}>AV & Multimedia</option>
+                <option value={2}>Lab Instruments</option>
+                <option value={3}>Computing Hardware</option>
+                <option value={4}>Event & Stage Gear</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Condition</label>
+              <select className="form-select" value={editCondition} onChange={(e) => setEditCondition(e.target.value)}>
+                <option value="EXCELLENT">EXCELLENT</option>
+                <option value="GOOD">GOOD</option>
+                <option value="FAIR">FAIR</option>
+                <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
+            Update Equipment Item
           </button>
         </form>
       </Modal>

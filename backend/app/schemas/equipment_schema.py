@@ -18,6 +18,14 @@ class EquipmentCreate(BaseModel):
     condition: Optional[str] = "EXCELLENT"
     is_available: Optional[bool] = True
 
+class EquipmentUpdate(BaseModel):
+    serial_number: Optional[str] = None
+    name: Optional[str] = None
+    category_id: Optional[int] = None
+    assigned_room_id: Optional[str] = None
+    condition: Optional[str] = None
+    is_available: Optional[bool] = None
+
 class EquipmentOut(BaseModel):
     id: str
     serial_number: str

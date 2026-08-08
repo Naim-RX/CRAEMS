@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 from app.models.booking import RoomBooking, BookingApproval
 from app.models.facility import Room
+from app.models.event import Event
 from app.core.exceptions import BookingConflictException, EntityNotFoundException
 
 class BookingService:
@@ -39,7 +40,42 @@ class BookingService:
             stmt = stmt.where(RoomBooking.id != exclude_booking_id)
         
         result = await db.execute(stmt)
-        return result.scalars().first()
+        booking_conflict = result.scalars().first()
+        if booking_conflict:
+            return booking_conflict
+            
+        # Check Event conflicts
+        event_stmt = select(Event).where(
+            and_(
+                Event.room_id == room_id,
+                Event.status.in_(["PENDING_APPROVAL", "PUBLISHED"]),
+                Event.is_deleted == False,
+                or_(
+                    and_(Event.start_time <= start_time, Event.end_time > start_time),
+                    and_(Event.start_time < end_time, Event.end_time >= end_time),
+                    and_(Event.start_time >= start_time, Event.end_time <= end_time)
+                )
+            )
+        )
+        # We don't exclude_booking_id here because it's a booking, not an event
+        
+        event_result = await db.execute(event_stmt)
+        event_conflict = event_result.scalars().first()
+        if event_conflict:
+            # We can return a mock RoomBooking or we can just raise/return it. 
+            # The method signature says Optional[RoomBooking]. 
+            # To avoid changing all callers, we can return a mock RoomBooking representing the event.
+            mock_booking = RoomBooking(
+                id=event_conflict.id,
+                room_id=event_conflict.room_id,
+                booking_reference="EVT-" + str(event_conflict.id)[:8],
+                start_time=event_conflict.start_time,
+                end_time=event_conflict.end_time,
+                status=event_conflict.status
+            )
+            return mock_booking
+
+        return None
 
     @classmethod
     async def create_booking(
@@ -113,6 +149,16 @@ class BookingService:
             comments=comments
         )
         db.add(approval)
+
+        from app.models.system import Notification
+        is_approved = (action == "APPROVED")
+        notif_title = f"Room Booking {'Approved' if is_approved else 'Rejected'}"
+        notif_msg = f"Your room booking request '{booking.title or booking.booking_reference}' has been {action.lower()}."
+        if comments:
+            notif_msg += f" Note: {comments}"
+        db.add(Notification(user_id=booking.user_id, title=notif_title, message=notif_msg))
+
         await db.commit()
         await db.refresh(booking)
         return booking
+

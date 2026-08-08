@@ -16,6 +16,7 @@ import { EventStats } from '../../components/events/EventStats';
 import { EventDetailsModal } from '../../components/events/EventDetailsModal';
 import { MyEventsView } from '../../components/events/MyEventsView';
 import { EventFormModal } from '../../components/events/EventFormModal';
+import { EventAttendeesModal } from '../../components/events/EventAttendeesModal';
 import { VenueFormModal } from '../../components/events/VenueFormModal';
 import { Modal } from '../../components/common/Modal';
 import { QRScannerModal } from '../../components/common/QRScannerModal';
@@ -149,7 +150,10 @@ export const EventManagementPage = () => {
   const [activeView, setActiveView] = useState('grid');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isAttendeesModalOpen, setIsAttendeesModalOpen] = useState(false);
+  const [attendeesEvent, setAttendeesEvent] = useState(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState(null);
   const [isVenueModalOpen, setIsVenueModalOpen] = useState(false);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const [ticketModal, setTicketModal] = useState(null);
@@ -172,13 +176,20 @@ export const EventManagementPage = () => {
     try {
       const res = await api.get('/events');
       const data = res.data?.length > 0 ? res.data : DEMO_EVENTS;
-      setEvents(data);
-      setFilteredEvents(data);
+      const visibleData = data.filter(e => 
+        e.is_published || 
+        ['PUBLISHED', 'APPROVED'].includes(e.status) || 
+        isAdmin || 
+        isOrganizer || 
+        e.organizer_id === user?.id
+      );
+      setEvents(visibleData);
+      setFilteredEvents(visibleData);
     } catch {
       setEvents(DEMO_EVENTS);
       setFilteredEvents(DEMO_EVENTS);
     }
-  }, []);
+  }, [isAdmin, isOrganizer, user?.id]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -346,18 +357,29 @@ const buildFallbackFloors = () => {
     }
   };
 
-  // ── Event Create / Request ─────────────────────
+  // ── Event Create / Request / Edit ───────────────
   const handleEventSubmit = async (formData) => {
     if (!user) {
       showToast('Please sign in to create or request an event.', 'error');
       throw new Error('Not authenticated');
     }
-    const endpoint = `/events?organizer_id=${user.id}`;
-    const payload = { ...formData, status: canCreateEvent ? 'PUBLISHED' : 'PENDING_APPROVAL' };
-    const res = await api.post(endpoint, payload);
-    showToast(canCreateEvent ? 'Event created and published!' : 'Event request submitted for review!', 'success');
-    await fetchEvents();
-    return res.data;
+
+    if (eventToEdit) {
+      // Edit existing event
+      const res = await api.put(`/events/${eventToEdit.id}`, formData);
+      showToast('Event updated successfully!', 'success');
+      setEventToEdit(null);
+      await fetchEvents();
+      return res.data;
+    } else {
+      // Create new event
+      const endpoint = `/events?organizer_id=${user.id}`;
+      const payload = { ...formData, status: canCreateEvent ? 'PUBLISHED' : 'PENDING_APPROVAL' };
+      const res = await api.post(endpoint, payload);
+      showToast(canCreateEvent ? 'Event created and published!' : 'Event request submitted for review!', 'success');
+      await fetchEvents();
+      return res.data;
+    }
   };
 
   // ── Venue / Room Creation (Admin) ──────────────
@@ -384,27 +406,26 @@ const buildFallbackFloors = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '3rem' }}>
 
+      {/* ── PAGE HEADER ──────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '1.8rem' }}>Campus Events & Activities</h1>
+        </div>
+        {canCreateEvent && (
+          <button className="btn-primary" onClick={() => { setEventToEdit(null); setIsFormModalOpen(true); }}>
+            <Plus size={18} /> Create Event
+          </button>
+        )}
+      </div>
 
       {/* ── ADMIN CONTROL PANEL ──────────────── */}
       {isAdmin && (
         <AdminControlPanel
-          onCreateEvent={() => setIsFormModalOpen(true)}
+          onCreateEvent={() => { setEventToEdit(null); setIsFormModalOpen(true); }}
           onAddVenue={() => setIsVenueModalOpen(true)}
           onOpenScanner={() => setIsQRScannerOpen(true)}
         />
       )}
-
-
-
-      {/* ── STATS SECTION ────────────────────── */}
-      <div>
-        <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1rem' }}>📊 Campus Event Statistics</div>
-        <EventStats stats={stats} />
-      </div>
-
-
-
-
 
       {/* ── STICKY FILTERS ───────────────────── */}
       <EventFilters
@@ -480,6 +501,9 @@ const buildFallbackFloors = () => {
                     event={evt}
                     onRegister={handleRegister}
                     onViewDetails={(e) => { setSelectedEvent(e); setIsDetailModalOpen(true); }}
+                    onEdit={(e) => { setEventToEdit(e); setIsFormModalOpen(true); }}
+                    onViewAttendees={(e) => { setAttendeesEvent(e); setIsAttendeesModalOpen(true); }}
+                    isAdmin={isAdmin}
                   />
                 ))}
               </div>
@@ -525,17 +549,27 @@ const buildFallbackFloors = () => {
         onClose={() => { setIsDetailModalOpen(false); setSelectedEvent(null); }}
         event={selectedEvent}
         onRegister={handleRegister}
+        onViewAttendees={(e) => { setAttendeesEvent(e); setIsAttendeesModalOpen(true); }}
+        isAdmin={isAdmin}
       />
 
-{/* Event Create/Request Form Modal */}
+      {/* Registered Students / Attendees Modal */}
+      <EventAttendeesModal
+        isOpen={isAttendeesModalOpen}
+        onClose={() => { setIsAttendeesModalOpen(false); setAttendeesEvent(null); }}
+        event={attendeesEvent}
+      />
+
+      {/* Event Create/Request/Edit Form Modal */}
       <EventFormModal
         isOpen={isFormModalOpen}
-        onClose={() => setIsFormModalOpen(false)}
+        onClose={() => { setIsFormModalOpen(false); setEventToEdit(null); }}
         userRole={user?.role?.name}
         onSubmit={handleEventSubmit}
         categories={categories}
         rooms={rooms}
         departments={departments}
+        initialData={eventToEdit}
       />
 
       {/* Admin Venue / Room Creation Modal */}

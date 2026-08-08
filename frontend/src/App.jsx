@@ -83,7 +83,8 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             </Route>
 
-            {/* Dashboard routes */}
+
+
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardRedirect />} />
 

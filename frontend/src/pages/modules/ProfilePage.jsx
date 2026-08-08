@@ -4,30 +4,41 @@ import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import {
   User, Mail, Phone, Building2, Shield, Key,
-  Bell, Save, Camera, CheckCircle, AlertCircle
+  Bell, Save, Camera, CheckCircle, AlertCircle,
+  Box, Ticket, Calendar, QrCode, Clock
 } from 'lucide-react';
+import { StatusBadge } from '../../components/common/StatusBadge';
 
 export const ProfilePage = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState('info');
+  const [historySubTab, setHistorySubTab] = useState('ALL');
   const [bookings, setBookings] = useState([]);
+  const [equipmentReservations, setEquipmentReservations] = useState([]);
+  const [eventRegistrations, setEventRegistrations] = useState([]);
   const [editForm, setEditForm] = useState({ full_name: user?.full_name || '', phone: user?.phone || '' });
   const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' });
   const [msg, setMsg] = useState({ text: '', type: '' });
 
   useEffect(() => {
-    if (user) {
-      const fetchBookings = async () => {
+    if (user?.id) {
+      const fetchHistory = async () => {
         try {
-          const res = await api.get(`/bookings?user_id=${user.id}`);
-          setBookings(res.data);
+          const [bRes, eqRes, evRes] = await Promise.allSettled([
+            api.get(`/bookings?user_id=${user.id}`),
+            api.get(`/equipment/reservations?user_id=${user.id}`),
+            api.get(`/events/user/my-registrations?user_id=${user.id}`)
+          ]);
+          if (bRes.status === 'fulfilled' && Array.isArray(bRes.value.data)) setBookings(bRes.value.data);
+          if (eqRes.status === 'fulfilled' && Array.isArray(eqRes.value.data)) setEquipmentReservations(eqRes.value.data);
+          if (evRes.status === 'fulfilled' && Array.isArray(evRes.value.data)) setEventRegistrations(evRes.value.data);
         } catch (e) { /* silent */ }
       };
-      fetchBookings();
+      fetchHistory();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const showMsg = (text, type = 'success') => {
     setMsg({ text, type });
@@ -36,7 +47,7 @@ export const ProfilePage = () => {
 
   const tabs = [
     { id: 'info', label: 'Personal Info', icon: User },
-    { id: 'bookings', label: 'Booking History', icon: Building2 },
+    { id: 'bookings', label: 'Reservation History', icon: Building2 },
     { id: 'security', label: 'Security', icon: Key },
     { id: 'notifications', label: 'Preferences', icon: Bell },
   ];
@@ -47,7 +58,6 @@ export const ProfilePage = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div>
         <h1 style={{ fontSize: '1.8rem' }}>My Profile</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Manage your account settings and preferences</p>
       </div>
 
       {/* Profile Header Card */}
@@ -104,39 +114,39 @@ export const ProfilePage = () => {
               onClick={() => setActiveTab(tab.id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.75rem 1.25rem',
-                background: 'transparent', border: 'none',
+                padding: '0.75rem 1.25rem', border: 'none', background: 'transparent',
                 borderBottom: activeTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
                 color: activeTab === tab.id ? 'var(--accent-primary)' : 'var(--text-muted)',
                 fontWeight: activeTab === tab.id ? 700 : 500,
-                cursor: 'pointer', fontSize: '0.9rem',
-                transition: 'var(--transition-fast)'
+                fontSize: '0.9rem', cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}
             >
-              <Icon size={16} /> {tab.label}
+              <Icon size={16} />
+              {tab.label}
             </button>
           );
         })}
       </div>
 
-      {/* Alert */}
       {msg.text && (
-        <div className="animate-fade-in" style={{
+        <div style={{
           padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-sm)',
-          background: msg.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-          border: `1px solid ${msg.type === 'success' ? '#10b981' : '#ef4444'}`,
-          color: msg.type === 'success' ? '#34d399' : '#f87171',
-          display: 'flex', alignItems: 'center', gap: '0.5rem'
+          background: msg.type === 'error' ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
+          border: `1px solid ${msg.type === 'error' ? '#ef4444' : '#10b981'}`,
+          color: msg.type === 'error' ? '#f87171' : '#34d399',
+          fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
         }}>
-          {msg.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />} {msg.text}
+          {msg.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
+          {msg.text}
         </div>
       )}
 
-      {/* Tab Content */}
+      {/* Tab Panels */}
       {activeTab === 'info' && (
         <div className="glass-panel" style={{ padding: '2rem' }}>
-          <h3 style={{ fontSize: '1.15rem', marginBottom: '1.5rem' }}>Personal Information</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.15rem', marginBottom: '1.5rem' }}>Personal Details</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label className="form-label">Full Name</label>
               <input
@@ -146,8 +156,8 @@ export const ProfilePage = () => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Email Address (read-only)</label>
-              <input type="email" className="form-input" value={user?.email || ''} readOnly
+              <label className="form-label">Email Address</label>
+              <input type="email" className="form-input" value={user?.email} readOnly
                 style={{ opacity: 0.6, cursor: 'not-allowed' }} />
             </div>
             <div className="form-group">
@@ -173,42 +183,195 @@ export const ProfilePage = () => {
       )}
 
       {activeTab === 'bookings' && (
-        <div className="glass-panel" style={{ padding: '2rem' }}>
-          <h3 style={{ fontSize: '1.15rem', marginBottom: '1.5rem' }}>Booking & Reservation History</h3>
-          {bookings.length > 0 ? (
-            <div className="table-container">
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Reference</th>
-                    <th>Facility</th>
-                    <th>Title</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map(b => (
-                    <tr key={b.id}>
-                      <td style={{ fontWeight: 600, color: 'var(--accent-primary)', fontFamily: 'monospace' }}>
-                        {b.booking_reference}
-                      </td>
-                      <td>Room {b.room?.room_number || 'N/A'}</td>
-                      <td>{b.title}</td>
-                      <td style={{ fontSize: '0.85rem' }}>
-                        {new Date(b.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-                      <td>
-                        <span className={`badge badge-${b.status?.toLowerCase()}`}>{b.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Sub Filter Tabs */}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {[
+              { id: 'ALL', label: 'All History' },
+              { id: 'ROOMS', label: `🏛️ Room Bookings (${bookings.length})` },
+              { id: 'EQUIPMENT', label: `🔬 Equipment Loans (${equipmentReservations.length})` },
+              { id: 'EVENTS', label: `🎟️ Event Passes (${eventRegistrations.length})` }
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setHistorySubTab(t.id)}
+                style={{
+                  padding: '0.45rem 0.9rem', borderRadius: 'var(--radius-sm)',
+                  border: historySubTab === t.id ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                  background: historySubTab === t.id ? 'rgba(40, 167, 69, 0.12)' : 'var(--bg-surface)',
+                  color: historySubTab === t.id ? '#28A745' : 'var(--text-muted)',
+                  fontWeight: historySubTab === t.id ? 700 : 500,
+                  fontSize: '0.85rem', cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── ROOM RESERVATIONS ──────────────── */}
+          {(historySubTab === 'ALL' || historySubTab === 'ROOMS') && (
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <Building2 size={18} color="var(--accent-primary)" />
+                <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Room & Facility Bookings</h3>
+              </div>
+              {bookings.length > 0 ? (
+                <div className="table-container">
+                  <table className="custom-table">
+                    <thead>
+                      <tr>
+                        <th>Reference</th>
+                        <th>Facility</th>
+                        <th>Title & Purpose</th>
+                        <th>Date & Time</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookings.map(b => (
+                        <tr key={b.id}>
+                          <td style={{ fontWeight: 600, color: 'var(--accent-primary)', fontFamily: 'monospace' }}>
+                            {b.booking_reference}
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600 }}>Room {b.room?.room_number || 'N/A'}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {b.room?.building?.name || b.room?.building?.code || 'Main'}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600 }}>{b.title}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{b.purpose}</div>
+                          </td>
+                          <td style={{ fontSize: '0.85rem' }}>
+                            {new Date(String(b.start_time).replace('Z','').replace(' ','T')).toLocaleString([], {
+                              month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                            })}
+                          </td>
+                          <td><StatusBadge status={b.status} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  No room bookings recorded in your history.
+                </div>
+              )}
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-              No reservations found in your history.
+          )}
+
+          {/* ── EQUIPMENT RESERVATIONS ──────────── */}
+          {(historySubTab === 'ALL' || historySubTab === 'EQUIPMENT') && (
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <Box size={18} color="#10b981" />
+                <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Equipment Loan History</h3>
+              </div>
+              {equipmentReservations.length > 0 ? (
+                <div className="table-container">
+                  <table className="custom-table">
+                    <thead>
+                      <tr>
+                        <th>Equipment Item</th>
+                        <th>Serial Number</th>
+                        <th>Category</th>
+                        <th>Loan Duration</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {equipmentReservations.map(eq => (
+                        <tr key={eq.id}>
+                          <td>
+                            <div style={{ fontWeight: 600 }}>{eq.equipment?.name || 'Equipment Item'}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              Condition: {eq.equipment?.condition || 'GOOD'}
+                            </div>
+                          </td>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                            {eq.equipment?.serial_number || 'N/A'}
+                          </td>
+                          <td>{eq.equipment?.category?.name || 'Hardware'}</td>
+                          <td style={{ fontSize: '0.85rem' }}>
+                            <div>Start: {new Date(String(eq.start_time).replace('Z','').replace(' ','T')).toLocaleDateString()}</div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                              Return: {new Date(String(eq.expected_return_time).replace('Z','').replace(' ','T')).toLocaleDateString()}
+                            </div>
+                          </td>
+                          <td><StatusBadge status={eq.status} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  No equipment loans recorded in your history.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── EVENT PASSES ───────────────────── */}
+          {(historySubTab === 'ALL' || historySubTab === 'EVENTS') && (
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <Ticket size={18} color="#8b5cf6" />
+                <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Event Passes & Tickets</h3>
+              </div>
+              {eventRegistrations.length > 0 ? (
+                <div className="table-container">
+                  <table className="custom-table">
+                    <thead>
+                      <tr>
+                        <th>Event</th>
+                        <th>Venue</th>
+                        <th>Event Date</th>
+                        <th>Ticket Pass</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eventRegistrations.map(reg => (
+                        <tr key={reg.id}>
+                          <td>
+                            <div style={{ fontWeight: 600 }}>{reg.event?.title || 'Campus Event'}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {reg.event?.category?.name || 'Event'}
+                            </div>
+                          </td>
+                          <td>
+                            {reg.event?.room ? `Room ${reg.event.room.room_number}` : 'Main Venue'}
+                          </td>
+                          <td style={{ fontSize: '0.85rem' }}>
+                            {reg.event?.start_time ? new Date(reg.event.start_time).toLocaleString([], {
+                              month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                            }) : 'TBD'}
+                          </td>
+                          <td>
+                            <div style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                              fontFamily: 'monospace', fontWeight: 700,
+                              color: 'var(--accent-secondary)', fontSize: '0.85rem'
+                            }}>
+                              <QrCode size={14} /> {reg.ticket_code || 'TKT-VALID'}
+                            </div>
+                          </td>
+                          <td><StatusBadge status={reg.status || 'CONFIRMED'} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  No event registrations found in your history.
+                </div>
+              )}
             </div>
           )}
         </div>

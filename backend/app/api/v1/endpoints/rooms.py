@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.facility import Room, Building, Floor, RoomType
-from app.schemas.room_schema import RoomOut, RoomCreate, BuildingOut, RoomTypeOut
+from app.schemas.room_schema import RoomOut, RoomCreate, RoomUpdate, BuildingOut, RoomTypeOut
 
 router = APIRouter()
 
@@ -69,5 +69,28 @@ async def create_room(room_in: RoomCreate, db: AsyncSession = Depends(get_db)):
         selectinload(Room.room_type),
         selectinload(Room.images)
     ).where(Room.id == room.id)
+    res = await db.execute(stmt)
+    return res.scalars().first()
+
+@router.put("/{room_id}", response_model=RoomOut)
+async def update_room(room_id: str, room_in: RoomUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Room).where(Room.id == room_id))
+    room = result.scalars().first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    update_data = room_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(room, field, value)
+        
+    await db.commit()
+    await db.refresh(room)
+    
+    stmt = select(Room).options(
+        selectinload(Room.building),
+        selectinload(Room.floor),
+        selectinload(Room.room_type),
+        selectinload(Room.images)
+    ).where(Room.id == room_id)
     res = await db.execute(stmt)
     return res.scalars().first()

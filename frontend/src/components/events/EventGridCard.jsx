@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Calendar, MapPin, Users, Heart, Share2, Ticket, Eye, CheckCircle2, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, Heart, Share2, Ticket, Eye, CheckCircle2, Clock, Edit, UserCheck } from 'lucide-react';
 
-export const EventGridCard = ({ event, onRegister, onViewDetails }) => {
+export const EventGridCard = ({ event, onRegister, onViewDetails, onEdit, onViewAttendees, isAdmin }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [copiedMsg, setCopiedMsg] = useState(false);
 
@@ -144,28 +144,61 @@ export const EventGridCard = ({ event, onRegister, onViewDetails }) => {
           )}
 
           {/* Buttons */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             <button
               className="btn-primary"
-              style={{ flex: 1, justifyContent: 'center', padding: '0.55rem 0.75rem', fontSize: '0.82rem' }}
+              style={{ flex: '1 1 90px', justifyContent: 'center', padding: '0.5rem 0.65rem', fontSize: '0.8rem' }}
               onClick={(e) => {
                 e.stopPropagation();
                 onRegister(event);
               }}
               disabled={seatsLeft <= 0}
             >
-              <Ticket size={14} /> {seatsLeft > 0 ? 'Register' : 'Full'}
+              <Ticket size={13} /> {seatsLeft > 0 ? 'Register' : 'Full'}
             </button>
             <button
               className="btn-secondary"
-              style={{ padding: '0.55rem 0.75rem', fontSize: '0.82rem' }}
+              style={{ flex: '1 1 80px', justifyContent: 'center', padding: '0.5rem 0.65rem', fontSize: '0.8rem' }}
               onClick={(e) => {
                 e.stopPropagation();
                 onViewDetails(event);
               }}
             >
-              <Eye size={14} /> View Details
+              <Eye size={13} /> Details
             </button>
+            {isAdmin && onViewAttendees && (
+              <button
+                className="btn-secondary"
+                style={{
+                  padding: '0.5rem 0.65rem',
+                  fontSize: '0.8rem',
+                  background: 'var(--accent-green-light)',
+                  borderColor: 'var(--accent-primary)',
+                  color: 'var(--accent-primary)',
+                  fontWeight: 700
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewAttendees(event);
+                }}
+                title="View Registered Students"
+              >
+                <UserCheck size={13} /> Students ({event.registered_count || 0})
+              </button>
+            )}
+            {isAdmin && onEdit && (
+              <button
+                className="btn-secondary"
+                style={{ padding: '0.5rem 0.65rem', fontSize: '0.8rem' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(event);
+                }}
+                title="Edit Event"
+              >
+                <Edit size={13} />
+              </button>
+            )}
           </div>
         </div>
       </div>

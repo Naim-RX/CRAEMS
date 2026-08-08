@@ -23,6 +23,7 @@ export const Sidebar = () => {
     { title: 'Campus Events', path: '/events', icon: Ticket, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY', 'STUDENT', 'GUEST', 'LAB_ASSISTANT'] },
     { title: 'Live Booking Status', path: '/status', icon: Activity, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY', 'STUDENT', 'RESEARCHER', 'LAB_ASSISTANT', 'GUEST'] },
     { title: 'Reports & Analytics', path: '/reports', icon: FileText, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY'] },
+
     { title: 'Admin Settings', path: '/settings/admin', icon: ShieldCheck, roles: ['ADMINISTRATOR'] },
     { title: 'My Profile', path: '/profile', icon: UserCheck, roles: ['ADMINISTRATOR', 'RESOURCE_MANAGER', 'FACULTY', 'STUDENT', 'RESEARCHER', 'LAB_ASSISTANT', 'GUEST'] },
   ];

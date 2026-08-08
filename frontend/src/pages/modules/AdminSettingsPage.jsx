@@ -46,7 +46,6 @@ export const AdminSettingsPage = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div>
         <h1 style={{ fontSize: '1.8rem' }}>Administrator System Settings</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Global configuration, user governance, and system maintenance</p>
       </div>
 
       {msg && (

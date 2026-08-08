@@ -62,7 +62,6 @@ export const ReportsPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem' }}>Reports & Analytics</h1>
-          <p style={{ color: 'var(--text-muted)' }}>System-wide utilization metrics and operational insights</p>
         </div>
         <button className="btn-secondary" onClick={handleExportCSV}>
           <Download size={16} /> Export CSV

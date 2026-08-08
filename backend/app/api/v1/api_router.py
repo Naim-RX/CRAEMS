@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, rooms, bookings, equipment, events, reports, admin
+from app.api.v1.endpoints import auth, rooms, bookings, equipment, events, reports, admin, notifications
 
 api_router = APIRouter()
 
@@ -10,3 +10,5 @@ api_router.include_router(equipment.router, prefix="/equipment", tags=["Equipmen
 api_router.include_router(events.router, prefix="/events", tags=["Event Management"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports & Analytics"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin System"])
+api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
+

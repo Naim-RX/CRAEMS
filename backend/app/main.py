@@ -68,9 +68,15 @@ async def startup_db_seed():
                 except Exception as exc:
                     logger.info(f"Migration note: {column_name} already exists or is unavailable: {exc}")
     except Exception as exc:
-        logger.warning(f"Migration block skipped (non-MySQL or schema N/A): {exc}")
+        logger.error(f"Schema migration failed: {exc}")
 
-    # Always use the current (possibly updated) session factory
+    # Install MySQL database triggers for automated audit logging
+    try:
+        from app.core.triggers import install_database_triggers
+        await install_database_triggers(_db.engine)
+    except Exception as exc:
+        logger.warning(f"Database trigger installation skipped: {exc}")
+
     async with _db.AsyncSessionLocal() as db:
         # 1. Seed Roles
         roles_data = [

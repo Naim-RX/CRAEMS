@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Award, Calendar, CheckCircle2, Plus } from 'lucide-react';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { CalendarDatePicker } from '../../components/common/CalendarDatePicker';
 import api from '../../services/api';
 
 export const FacultyDashboard = () => {
@@ -64,7 +65,6 @@ export const FacultyDashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem' }}>Faculty Academic Hub</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Academic Overview & Department Events</p>
         </div>
       </div>
 
@@ -149,11 +149,23 @@ export const FacultyDashboard = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Start Time</label>
-              <input type="datetime-local" className="form-input" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+              <CalendarDatePicker
+                mode="datetime"
+                value={startTime}
+                onChange={(val) => setStartTime(val)}
+                required
+                placeholder="Pick start date & time..."
+              />
             </div>
             <div className="form-group">
               <label className="form-label">End Time</label>
-              <input type="datetime-local" className="form-input" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+              <CalendarDatePicker
+                mode="datetime"
+                value={endTime}
+                onChange={(val) => setEndTime(val)}
+                required
+                placeholder="Pick end date & time..."
+              />
             </div>
           </div>
 

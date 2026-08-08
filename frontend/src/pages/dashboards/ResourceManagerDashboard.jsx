@@ -42,7 +42,6 @@ export const ResourceManagerDashboard = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div>
         <h1 style={{ fontSize: '1.8rem' }}>Resource Manager Control Hub</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Facility Approvals, Maintenance Alerts & Conflict Resolution</p>
       </div>
 
       {actionMsg && (

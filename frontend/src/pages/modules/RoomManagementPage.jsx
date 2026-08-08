@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, Filter, Plus, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Building2, Search, Filter, Plus, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, Edit } from 'lucide-react';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { CalendarDatePicker } from '../../components/common/CalendarDatePicker';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -23,6 +24,7 @@ export const RoomManagementPage = () => {
   const [buildings, setBuildings] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
   const [allBookings, setAllBookings] = useState([]);
+  const [allEvents, setAllEvents] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState('');
   const [minCapacity, setMinCapacity] = useState(0);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -37,6 +39,16 @@ export const RoomManagementPage = () => {
   const [newCapacity, setNewCapacity] = useState(30);
   const [addRoomMsg, setAddRoomMsg] = useState('');
 
+  // Admin Edit Room state
+  const [isEditRoomModalOpen, setIsEditRoomModalOpen] = useState(false);
+  const [editRoomId, setEditRoomId] = useState(null);
+  const [editRoomNumber, setEditRoomNumber] = useState('');
+  const [editBuildingId, setEditBuildingId] = useState(1);
+  const [editFloorId, setEditFloorId] = useState(1);
+  const [editRoomTypeId, setEditRoomTypeId] = useState(1);
+  const [editCapacity, setEditCapacity] = useState(30);
+  const [editRoomMsg, setEditRoomMsg] = useState('');
+
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
   const [bookingDate, setBookingDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -50,11 +62,12 @@ export const RoomManagementPage = () => {
       if (selectedBuilding) url += `&building_id=${selectedBuilding}`;
       if (minCapacity > 0) url += `&min_capacity=${minCapacity}`;
       
-      const [rRes, bRes, bkRes, tRes] = await Promise.allSettled([
+      const [rRes, bRes, bkRes, tRes, eRes] = await Promise.allSettled([
         api.get(url),
         api.get('/rooms/buildings'),
         api.get('/bookings'),
-        api.get('/rooms/types')
+        api.get('/rooms/types'),
+        api.get('/events')
       ]);
       if (rRes.status === 'fulfilled') setRooms(rRes.value.data);
       if (bRes.status === 'fulfilled') {
@@ -62,6 +75,7 @@ export const RoomManagementPage = () => {
         if (bRes.value.data.length > 0 && !newBuildingId) setNewBuildingId(bRes.value.data[0].id);
       }
       if (bkRes.status === 'fulfilled') setAllBookings(Array.isArray(bkRes.value.data) ? bkRes.value.data : []);
+      if (eRes.status === 'fulfilled') setAllEvents(Array.isArray(eRes.value.data) ? eRes.value.data : []);
       if (tRes.status === 'fulfilled') {
         setRoomTypes(tRes.value.data);
         if (tRes.value.data.length > 0 && !newRoomTypeId) setNewRoomTypeId(tRes.value.data[0].id);
@@ -100,12 +114,46 @@ export const RoomManagementPage = () => {
     }
   };
 
+  const openEditRoomModal = (room) => {
+    setEditRoomId(room.id);
+    setEditRoomNumber(room.room_number);
+    setEditBuildingId(room.building_id || room.building?.id || 1);
+    setEditFloorId(room.floor_id || room.floor?.id || 1);
+    setEditRoomTypeId(room.room_type_id || room.room_type?.id || 1);
+    setEditCapacity(room.capacity);
+    setEditRoomMsg('');
+    setIsEditRoomModalOpen(true);
+  };
+
+  const handleEditRoomSubmit = async (e) => {
+    e.preventDefault();
+    setEditRoomMsg('');
+    try {
+      await api.put(`/rooms/${editRoomId}`, {
+        room_number: editRoomNumber,
+        building_id: Number(editBuildingId),
+        floor_id: Number(editFloorId),
+        room_type_id: Number(editRoomTypeId),
+        capacity: Number(editCapacity)
+      });
+      setEditRoomMsg('Room updated successfully!');
+      setTimeout(() => {
+        setIsEditRoomModalOpen(false);
+        setEditRoomMsg('');
+        fetchRoomsData();
+      }, 1000);
+    } catch (err) {
+      setEditRoomMsg(err.response?.data?.detail || 'Failed to update room.');
+    }
+  };
+
+
   const isSlotBooked = (slot, dateStr, roomId) => {
     if (!dateStr || !roomId) return false;
     const slotStart = new Date(`${dateStr}T${String(slot.startHour).padStart(2, '0')}:00:00`).getTime();
     const slotEnd = new Date(`${dateStr}T${String(slot.endHour).padStart(2, '0')}:00:00`).getTime();
 
-    return allBookings.some(b => {
+    const hasBookingConflict = allBookings.some(b => {
       if (b.room_id !== roomId && b.room?.id !== roomId) return false;
       if (['CANCELLED', 'REJECTED'].includes(b.status)) return false;
 
@@ -116,6 +164,20 @@ export const RoomManagementPage = () => {
 
       return bStart < slotEnd && bEnd > slotStart;
     });
+
+    if (hasBookingConflict) return true;
+
+    return allEvents.some(e => {
+      if (e.room_id !== roomId && e.room?.id !== roomId) return false;
+      if (e.is_deleted || ['REJECTED', 'CANCELLED'].includes(e.status)) return false;
+
+      const startStr = String(e.start_time).replace('Z', '').replace(' ', 'T');
+      const endStr = String(e.end_time || e.start_time).replace('Z', '').replace(' ', 'T');
+      const eStart = new Date(startStr).getTime();
+      const eEnd = new Date(endStr).getTime();
+
+      return eStart < slotEnd && eEnd > slotStart;
+    });
   };
 
   const openBookingForRoom = (room) => {
@@ -125,7 +187,7 @@ export const RoomManagementPage = () => {
     
     const dateStr = bookingDate || new Date().toISOString().split('T')[0];
     const freeSlot = HOURLY_TIME_SLOTS.find(s => !isSlotBooked(s, dateStr, room.id));
-    if (freeSlot) setSelectedSlot(freeSlot.id);
+    setSelectedSlot(freeSlot ? freeSlot.id : null);
     
     setIsBookModalOpen(true);
   };
@@ -179,7 +241,6 @@ export const RoomManagementPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem' }}>Campus Room & Facility Catalog</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Interactive facility lookup, real-time availability & conflict-free booking</p>
         </div>
         {user?.role?.name === 'ADMINISTRATOR' && (
           <button className="btn-primary" onClick={() => { setAddRoomMsg(''); setIsAddRoomModalOpen(true); }}>
@@ -222,9 +283,28 @@ export const RoomManagementPage = () => {
         {rooms.map(room => (
           <div key={room.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
                 <span className="badge badge-active">{room.room_type?.name}</span>
-                <StatusBadge status={room.is_maintenance ? 'DAMAGED' : 'AVAILABLE'} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <StatusBadge status={room.is_maintenance ? 'DAMAGED' : 'AVAILABLE'} />
+                  {user?.role?.name === 'ADMINISTRATOR' && (
+                    <button 
+                      onClick={() => openEditRoomModal(room)}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        cursor: 'pointer', 
+                        color: 'var(--text-muted)',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      title="Edit Room Details"
+                    >
+                      <Edit size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <h3 style={{ fontSize: '1.3rem', marginBottom: '0.35rem' }}>
@@ -283,13 +363,21 @@ export const RoomManagementPage = () => {
 
             <div className="form-group">
               <label className="form-label">Booking Date</label>
-              <input
-                type="date"
-                className="form-input"
+              <CalendarDatePicker
                 value={bookingDate}
                 min={todayStr}
-                onChange={(e) => setBookingDate(e.target.value)}
+                onChange={(val) => {
+                  setBookingDate(val);
+                  if (targetRoom) {
+                    const currentSlot = HOURLY_TIME_SLOTS.find(s => s.id === selectedSlot);
+                    if (!currentSlot || isSlotBooked(currentSlot, val, targetRoom.id)) {
+                      const freeSlot = HOURLY_TIME_SLOTS.find(s => !isSlotBooked(s, val, targetRoom.id));
+                      setSelectedSlot(freeSlot ? freeSlot.id : null);
+                    }
+                  }
+                }}
                 required
+                placeholder="Select booking date..."
               />
             </div>
 
@@ -313,9 +401,9 @@ export const RoomManagementPage = () => {
                   let labelText = slot.label;
 
                   if (booked) {
-                    bg = 'rgba(239, 68, 68, 0.18)';
-                    border = '1px solid rgba(239, 68, 68, 0.4)';
-                    color = '#f87171';
+                    bg = '#dc2626'; // Solid red
+                    border = '1px solid #b91c1c';
+                    color = '#ffffff';
                     labelText = `${slot.label} (BOOKED)`;
                   } else if (isSelected) {
                     bg = 'rgba(99, 102, 241, 0.25)';
@@ -340,7 +428,7 @@ export const RoomManagementPage = () => {
                         border,
                         background: bg,
                         color,
-                        opacity: booked ? 0.85 : 1,
+                        opacity: 1,
                         transition: 'all 0.15s ease'
                       }}
                     >
@@ -423,6 +511,70 @@ export const RoomManagementPage = () => {
 
           <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
             Create Room
+          </button>
+        </form>
+      </Modal>
+
+      {/* Admin Edit Room Modal */}
+      <Modal isOpen={isEditRoomModalOpen} onClose={() => setIsEditRoomModalOpen(false)} title="Edit Campus Facility / Room">
+        {editRoomMsg && (
+          <div style={{
+            padding: '0.75rem',
+            borderRadius: 'var(--radius-sm)',
+            background: editRoomMsg.includes('successfully') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            color: editRoomMsg.includes('successfully') ? '#34d399' : '#f87171',
+            fontSize: '0.85rem',
+            marginBottom: '1rem'
+          }}>
+            {editRoomMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleEditRoomSubmit}>
+          <div className="form-group">
+            <label className="form-label">Room Number / ID</label>
+            <input type="text" className="form-input" placeholder="e.g. 101, Lab-B, Aud-A" value={editRoomNumber} onChange={(e) => setEditRoomNumber(e.target.value)} required />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Building</label>
+              <select className="form-select" value={editBuildingId} onChange={(e) => setEditBuildingId(e.target.value)}>
+                {buildings.map(b => (
+                  <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Floor</label>
+              <select className="form-select" value={editFloorId} onChange={(e) => setEditFloorId(e.target.value)}>
+                <option value={1}>1st Floor</option>
+                <option value={2}>2nd Floor</option>
+                <option value={3}>3rd Floor</option>
+                <option value={4}>4th Floor</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Room Type</label>
+              <select className="form-select" value={editRoomTypeId} onChange={(e) => setEditRoomTypeId(e.target.value)}>
+                {roomTypes.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Seating Capacity</label>
+              <input type="number" min="1" className="form-input" value={editCapacity} onChange={(e) => setEditCapacity(e.target.value)} required />
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
+            Update Room
           </button>
         </form>
       </Modal>

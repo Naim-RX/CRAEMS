@@ -40,6 +40,15 @@ class RoomCreate(BaseModel):
     is_active: bool = True
     features: Optional[Dict[str, Any]] = None
 
+class RoomUpdate(BaseModel):
+    room_number: Optional[str] = None
+    building_id: Optional[int] = None
+    floor_id: Optional[int] = None
+    room_type_id: Optional[int] = None
+    capacity: Optional[int] = None
+    is_active: Optional[bool] = None
+    features: Optional[Dict[str, Any]] = None
+
 class RoomOut(BaseModel):
     id: str
     room_number: str

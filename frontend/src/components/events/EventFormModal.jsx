@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
+import { CalendarDatePicker } from '../common/CalendarDatePicker';
 import { Plus, Upload, Calendar, Users, MapPin, Tag, Briefcase, DollarSign, Clock, FileText, Sparkles, Building2 } from 'lucide-react';
 
 const ROLES_CAN_CREATE = ['ADMINISTRATOR', 'EVENT_ORGANIZER', 'RESOURCE_MANAGER'];
 const ROLES_CAN_REQUEST = ['FACULTY', 'STUDENT'];
 
-export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories = [], rooms = [], departments = [] }) => {
+export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories = [], rooms = [], departments = [], initialData = null }) => {
   const isAdmin = ROLES_CAN_CREATE.includes(userRole);
+  const isEditMode = !!initialData;
 
   const [form, setForm] = useState({
     title: '',
@@ -25,6 +27,28 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
     cover_image: '',
     organizer_notes: ''
   });
+
+  React.useEffect(() => {
+    if (initialData && isOpen) {
+      setForm({
+        title: initialData.title || '',
+        description: initialData.description || '',
+        category_id: initialData.category_id || '',
+        department_id: initialData.department_id || '',
+        room_id: initialData.room_id || '',
+        start_time: initialData.start_time ? new Date(initialData.start_time).toISOString().slice(0,16) : '',
+        end_time: initialData.end_time ? new Date(initialData.end_time).toISOString().slice(0,16) : '',
+        registration_deadline: initialData.registration_deadline ? new Date(initialData.registration_deadline).toISOString().slice(0,16) : '',
+        max_seats: initialData.max_seats || 50,
+        event_mode: initialData.event_mode || 'OFFLINE',
+        price_type: initialData.price_type || 'FREE',
+        price_amount: initialData.price_amount || 0,
+        is_public: initialData.is_published !== false,
+        cover_image: initialData.cover_image || '',
+        organizer_notes: ''
+      });
+    }
+  }, [initialData, isOpen]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -84,7 +108,7 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={() => { onClose(); resetForm(); }} title={isAdmin ? '✨ Create New Event' : '📋 Request Event Organization'} maxWidth="700px">
+    <Modal isOpen={isOpen} onClose={() => { onClose(); resetForm(); }} title={isEditMode ? '✏️ Edit Event' : (isAdmin ? '✨ Create New Event' : '📋 Request Event Organization')} maxWidth="700px">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
         {/* Header Context Banner */}
@@ -100,9 +124,11 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
           gap: '0.5rem'
         }}>
           <Sparkles size={15} />
-          {isAdmin
-            ? 'As an Administrator, events you create are immediately published and visible to all users.'
-            : 'Your event organization request will be reviewed by administrators. You will be notified upon approval.'}
+          {isEditMode 
+            ? 'You are editing an existing event. Changes will be saved immediately.'
+            : (isAdmin
+              ? 'As an Administrator, events you create are immediately published and visible to all users.'
+              : 'Your event organization request will be reviewed by administrators. You will be notified upon approval.')}
         </div>
 
         {/* Row 1: Title */}
@@ -155,11 +181,24 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label"><Calendar size={13} style={{ display: 'inline', marginRight: '4px' }} />Start Date & Time *</label>
-            <input name="start_time" value={form.start_time} onChange={handleChange} type="datetime-local" className="form-input" required />
+            <CalendarDatePicker
+              mode="datetime"
+              name="start_time"
+              value={form.start_time}
+              onChange={(val) => setForm(prev => ({ ...prev, start_time: val }))}
+              placeholder="Pick start time..."
+              required
+            />
           </div>
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label"><Clock size={13} style={{ display: 'inline', marginRight: '4px' }} />End Date & Time</label>
-            <input name="end_time" value={form.end_time} onChange={handleChange} type="datetime-local" className="form-input" />
+            <CalendarDatePicker
+              mode="datetime"
+              name="end_time"
+              value={form.end_time}
+              onChange={(val) => setForm(prev => ({ ...prev, end_time: val }))}
+              placeholder="Pick end time..."
+            />
           </div>
         </div>
 
@@ -167,7 +206,13 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label"><Clock size={13} style={{ display: 'inline', marginRight: '4px' }} />Registration Deadline</label>
-            <input name="registration_deadline" value={form.registration_deadline} onChange={handleChange} type="datetime-local" className="form-input" />
+            <CalendarDatePicker
+              mode="datetime"
+              name="registration_deadline"
+              value={form.registration_deadline}
+              onChange={(val) => setForm(prev => ({ ...prev, registration_deadline: val }))}
+              placeholder="Pick deadline..."
+            />
           </div>
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label"><Users size={13} style={{ display: 'inline', marginRight: '4px' }} />Maximum Seats</label>
@@ -275,7 +320,7 @@ export const EventFormModal = ({ isOpen, onClose, userRole, onSubmit, categories
             {loading ? (
               <span style={{ opacity: 0.8 }}>Submitting...</span>
             ) : (
-              <><Plus size={16} /> {isAdmin ? 'Create & Publish Event' : 'Submit Event Request'}</>
+              <><Plus size={16} /> {isEditMode ? 'Save Changes' : (isAdmin ? 'Create & Publish Event' : 'Submit Event Request')}</>
             )}
           </button>
         </div>

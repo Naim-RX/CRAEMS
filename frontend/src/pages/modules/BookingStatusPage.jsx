@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
   Activity, Building2, Box, CalendarDays, Clock, Users,
-  RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2
+  RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, Undo2, Check, X
 } from "lucide-react";
 import { StatusBadge } from "../../components/common/StatusBadge";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 
 // Helpers - timezone-safe date parsing
@@ -72,7 +73,7 @@ const EmptyState = ({ message }) => (
 );
 
 // ─── 1. BOOKED ROOMS & FACILITIES ─────────────────────────────────────────────
-const BookedRoomsSection = ({ bookings, loading }) => (
+const BookedRoomsSection = ({ bookings, loading, isAdmin, onBookingAction }) => (
   <div className="glass-panel" style={{ padding: "1.75rem" }}>
     <SectionHeader icon={Building2} title="Booked Rooms & Facilities" count={bookings.length} accentColor="#6366f1" />
     {loading ? (
@@ -144,6 +145,25 @@ const BookedRoomsSection = ({ bookings, loading }) => (
               {b.booking_reference && (
                 <div style={{ fontFamily: "monospace", fontSize: "0.72rem", color: "#818cf8" }}>
                   Ref: {b.booking_reference}
+                </div>
+              )}
+              {isAdmin && (
+                <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.5rem" }}>
+                  {b.status === "PENDING" && (
+                    <>
+                      <button className="btn-primary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }} onClick={() => onBookingAction(b.id, "APPROVED")} title="Approve">
+                        <Check size={14} />
+                      </button>
+                      <button className="btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", color: "#f87171" }} onClick={() => onBookingAction(b.id, "REJECTED")} title="Reject">
+                        <X size={14} />
+                      </button>
+                    </>
+                  )}
+                  {b.status !== "PENDING" && (
+                    <button className="btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", color: "#fbbf24" }} onClick={() => onBookingAction(b.id, "PENDING")} title="Revert to Pending">
+                      <Undo2 size={14} />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -325,6 +345,9 @@ const UpcomingEventsSection = ({ events, loading }) => (
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export const BookingStatusPage = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role?.name === "ADMINISTRATOR";
+
   const [bookings, setBookings] = useState([]);
   const [equipment, setEquipment] = useState([]);
   const [eqReservations, setEqReservations] = useState([]);
@@ -333,6 +356,7 @@ export const BookingStatusPage = () => {
   const [loadingEquipment, setLoadingEquipment] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
+  const [actionMsg, setActionMsg] = useState("");
 
   const fetchAll = async () => {
     setLoadingBookings(true);
@@ -342,7 +366,7 @@ export const BookingStatusPage = () => {
     try {
       const bRes = await api.get("/bookings");
       const active = Array.isArray(bRes.data)
-        ? bRes.data.filter((b) => !["CANCELLED", "COMPLETED"].includes(b.status))
+        ? bRes.data.filter((b) => isAdmin || !["CANCELLED", "COMPLETED"].includes(b.status))
         : [];
       setBookings(active);
     } catch { setBookings([]); } finally { setLoadingBookings(false); }
@@ -373,12 +397,38 @@ export const BookingStatusPage = () => {
     setLastRefreshed(new Date());
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [isAdmin]);
+
+  const handleBookingAction = async (bookingId, action) => {
+    setActionMsg("");
+    try {
+      await api.post(`/bookings/${bookingId}/approve?approver_id=${user.id}`, { action });
+      setActionMsg(`Booking ${action.toLowerCase()} successfully.`);
+      setTimeout(() => setActionMsg(""), 3000);
+      fetchAll();
+    } catch (err) {
+      console.error("Booking action failed:", err);
+      setActionMsg(err.response?.data?.detail || "Action failed.");
+      setTimeout(() => setActionMsg(""), 3000);
+    }
+  };
 
   const isLoading = loadingBookings || loadingEquipment || loadingEvents;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+      {actionMsg && (
+        <div style={{
+          padding: "1rem", borderRadius: "var(--radius-sm)",
+          background: actionMsg.includes("failed") ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
+          color: actionMsg.includes("failed") ? "#f87171" : "#34d399",
+          border: `1px solid ${actionMsg.includes("failed") ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`,
+          fontSize: "0.9rem", fontWeight: 600,
+          position: "fixed", top: "1rem", right: "1rem", zIndex: 9999
+        }}>
+          {actionMsg}
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.35rem" }}>
@@ -391,9 +441,6 @@ export const BookingStatusPage = () => {
             </div>
             <h1 style={{ fontSize: "1.8rem", margin: 0 }}>Live Booking Status</h1>
           </div>
-          <p style={{ color: "var(--text-muted)", margin: 0 }}>
-            Real-time view of booked rooms, reserved equipment, and upcoming campus events with dates and time slots
-          </p>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -435,7 +482,7 @@ export const BookingStatusPage = () => {
         ))}
       </div>
 
-      <BookedRoomsSection bookings={bookings} loading={loadingBookings} />
+      <BookedRoomsSection bookings={bookings} loading={loadingBookings} isAdmin={isAdmin} onBookingAction={handleBookingAction} />
       <ReservedEquipmentSection reservations={eqReservations} equipment={equipment} loading={loadingEquipment} />
       <UpcomingEventsSection events={events} loading={loadingEvents} />
 

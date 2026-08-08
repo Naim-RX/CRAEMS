@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useLocation } from 'react-router-dom';
 import { Users, Calendar, Box, ShieldCheck, Activity, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { DataTable } from '../../components/common/DataTable';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import api from '../../services/api';
 
 export const AdminDashboard = () => {
-  const { user } = useAuth();
+  const location = useLocation();
+  useEffect(() => {
+    if (location.pathname === '/audit') {
+      setActiveTab('AUDIT');
+    }
+  }, [location]);
   const [stats, setStats] = useState({});
   const [usersList, setUsersList] = useState([]);
   const [pendingRequests, setPendingRequests] = useState({ room_bookings: [], equipment_reservations: [], event_requests: [] });
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState(50);
+  const [auditFilters, setAuditFilters] = useState({ entity: '', action: '', user_id: '', start_date: '', end_date: '' });
   const [activeTab, setActiveTab] = useState('ALL');
   const [actionMsg, setActionMsg] = useState('');
 
@@ -28,9 +38,36 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Fetch audit logs with current filters & pagination
+  const fetchAuditLogs = async () => {
+    try {
+      const params = new URLSearchParams({
+        page: auditPage.toString(),
+        page_size: auditPageSize.toString(),
+        ...(auditFilters.entity && { entity: auditFilters.entity }),
+        ...(auditFilters.action && { action: auditFilters.action }),
+        ...(auditFilters.user_id && { user_id: auditFilters.user_id }),
+        ...(auditFilters.start_date && { start_date: auditFilters.start_date }),
+        ...(auditFilters.end_date && { end_date: auditFilters.end_date })
+      });
+      const res = await api.get(`/admin/audit-logs?${params.toString()}`);
+      setAuditLogs(res.data.items);
+      setAuditTotal(res.data.total);
+    } catch (err) {
+      console.error('Failed to fetch audit logs:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAdminData();
   }, []);
+
+  // Fetch audit logs when audit tab or filters change
+  useEffect(() => {
+    if (activeTab === 'AUDIT') {
+      fetchAuditLogs();
+    }
+  }, [activeTab, auditPage, auditPageSize, auditFilters]);
 
   const handleReviewRequest = async (requestType, requestId, action) => {
     setActionMsg('');
@@ -78,7 +115,6 @@ export const AdminDashboard = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div>
         <h1 style={{ fontSize: '1.8rem' }}>System Administrator Command Center</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Enterprise Security, Approval Governance & Resource Control</p>
       </div>
 
       {/* Metrics Row */}
@@ -181,7 +217,22 @@ export const AdminDashboard = () => {
             >
               Events ({pendingRequests.event_requests?.length || 0})
             </button>
-          </div>
+          <button
+          onClick={() => setActiveTab('AUDIT')}
+          style={{
+            padding: '0.4rem 0.85rem',
+            fontSize: '0.8rem',
+            borderRadius: 'var(--radius-xs)',
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'AUDIT' ? 'var(--accent-primary)' : 'transparent',
+            color: activeTab === 'AUDIT' ? '#ffffff' : 'var(--text-muted)',
+            fontWeight: 600
+          }}
+        >
+          Audit Logs
+        </button>
+      </div>
         </div>
 
         {actionMsg && (
@@ -256,7 +307,95 @@ export const AdminDashboard = () => {
         <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Registered System Users</h3>
         <DataTable columns={userColumns} data={usersList} searchPlaceholder="Search users by name or email..." />
       </div>
+{activeTab === 'AUDIT' && (
+        <div className="glass-panel" style={{ padding: '1.5rem', marginTop: '2rem' }}>
+          <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Audit Logs</h3>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <select
+              value={auditFilters.entity}
+              onChange={e => setAuditFilters({ ...auditFilters, entity: e.target.value })}
+              style={{ padding: '0.3rem', borderRadius: 'var(--radius-xs)' }}
+            >
+              <option value="">All Entities</option>
+              <option value="USER">User</option>
+              <option value="ROOM">Room</option>
+              <option value="EQUIPMENT">Equipment</option>
+              <option value="EVENT">Event</option>
+              <option value="ROOM_BOOKING">Room Booking</option>
+              <option value="EQUIPMENT_RESERVATION">Equipment Reservation</option>
+              <option value="EVENT_ORGANIZATION">Event Organization</option>
+            </select>
+            <select
+              value={auditFilters.action}
+              onChange={e => setAuditFilters({ ...auditFilters, action: e.target.value })}
+              style={{ padding: '0.3rem', borderRadius: 'var(--radius-xs)' }}
+            >
+              <option value="">All Actions</option>
+              <option value="CREATE">CREATE</option>
+              <option value="UPDATE">UPDATE</option>
+              <option value="APPROVE">APPROVE</option>
+              <option value="REJECT">REJECT</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+            <input
+              type="text"
+              placeholder="User ID"
+              value={auditFilters.user_id}
+              onChange={e => setAuditFilters({ ...auditFilters, user_id: e.target.value })}
+              style={{ padding: '0.3rem', borderRadius: 'var(--radius-xs)' }}
+            />
+            <input
+              type="date"
+              value={auditFilters.start_date}
+              onChange={e => setAuditFilters({ ...auditFilters, start_date: e.target.value })}
+              style={{ padding: '0.3rem', borderRadius: 'var(--radius-xs)' }}
+            />
+            <input
+              type="date"
+              value={auditFilters.end_date}
+              onChange={e => setAuditFilters({ ...auditFilters, end_date: e.target.value })}
+              style={{ padding: '0.3rem', borderRadius: 'var(--radius-xs)' }}
+            />
+            <button
+              onClick={() => { setAuditPage(1); fetchAuditLogs(); }}
+              style={{ padding: '0.3rem 0.6rem', borderRadius: 'var(--radius-xs)', background: 'var(--accent-primary)', color: '#fff', border: 'none' }}
+            >
+              Apply
+            </button>
+          </div>
+          <DataTable
+            columns={[
+              { header: 'ID', accessor: 'id' },
+              { header: 'Timestamp', accessor: 'timestamp' },
+              { header: 'User', accessor: 'user_id' },
+              { header: 'Entity', accessor: 'entity_name' },
+              { header: 'Entity ID', accessor: 'entity_id' },
+              { header: 'Action', accessor: 'action' },
+              { header: 'IP', accessor: 'ip_address' },
+              { header: 'Changes', accessor: 'changes' },
+            ]}
+            data={auditLogs}
+            searchPlaceholder="Search audit logs..."
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
+            <button
+              disabled={auditPage === 1}
+              onClick={() => setAuditPage(prev => Math.max(prev - 1, 1))}
+              style={{ padding: '0.3rem 0.6rem', borderRadius: 'var(--radius-xs)', background: auditPage === 1 ? '#ccc' : 'var(--accent-primary)', color: '#fff', border: 'none', cursor: auditPage === 1 ? 'not-allowed' : 'pointer' }}
+            >
+              Prev
+            </button>
+            <span>Page {auditPage}</span>
+            <button
+              disabled={(auditPage * auditPageSize) >= auditTotal}
+              onClick={() => setAuditPage(prev => prev + 1)}
+              style={{ padding: '0.3rem 0.6rem', borderRadius: 'var(--radius-xs)', background: (auditPage * auditPageSize) >= auditTotal ? '#ccc' : 'var(--accent-primary)', color: '#fff', border: 'none', cursor: (auditPage * auditPageSize) >= auditTotal ? 'not-allowed' : 'pointer' }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-

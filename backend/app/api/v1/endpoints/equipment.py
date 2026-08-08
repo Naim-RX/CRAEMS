@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.equipment import Equipment, EquipmentCategory, EquipmentReservation
-from app.schemas.equipment_schema import EquipmentOut, EquipmentCreate, EquipmentReservationCreate, EquipmentReservationOut
+from app.schemas.equipment_schema import EquipmentOut, EquipmentCreate, EquipmentUpdate, EquipmentReservationCreate, EquipmentReservationOut
 from app.models.user import User
 
 router = APIRouter()
@@ -48,6 +48,29 @@ async def create_equipment(
     await db.refresh(equipment)
 
     stmt = select(Equipment).options(selectinload(Equipment.category)).where(Equipment.id == equipment.id)
+    res = await db.execute(stmt)
+    return res.scalars().first()
+
+@router.put("/{equipment_id}", response_model=EquipmentOut)
+async def update_equipment(equipment_id: str, eq_in: EquipmentUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Equipment).where(Equipment.id == equipment_id))
+    equipment = result.scalars().first()
+    if not equipment:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    
+    if eq_in.serial_number and eq_in.serial_number != equipment.serial_number:
+        existing = await db.execute(select(Equipment).where(Equipment.serial_number == eq_in.serial_number))
+        if existing.scalars().first():
+            raise HTTPException(status_code=400, detail="Equipment with this serial number already exists.")
+
+    update_data = eq_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(equipment, field, value)
+        
+    await db.commit()
+    await db.refresh(equipment)
+    
+    stmt = select(Equipment).options(selectinload(Equipment.category)).where(Equipment.id == equipment_id)
     res = await db.execute(stmt)
     return res.scalars().first()
 

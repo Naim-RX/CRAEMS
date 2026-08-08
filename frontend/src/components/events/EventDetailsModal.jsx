@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
 import { Calendar, MapPin, Users, Clock, Share2, Ticket, CheckCircle, Shield, Award, HelpCircle, Mail, Phone, ChevronRight } from 'lucide-react';
 
-export const EventDetailsModal = ({ isOpen, onClose, event, onRegister }) => {
+export const EventDetailsModal = ({ isOpen, onClose, event, onRegister, onViewAttendees, isAdmin }) => {
   const [copied, setCopied] = useState(false);
   if (!event) return null;
 
@@ -50,7 +50,26 @@ export const EventDetailsModal = ({ isOpen, onClose, event, onRegister }) => {
               </h2>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {isAdmin && onViewAttendees && (
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    onClose();
+                    onViewAttendees(event);
+                  }}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    fontSize: '0.82rem',
+                    background: 'rgba(40, 167, 69, 0.2)',
+                    borderColor: '#28A745',
+                    color: '#ffffff',
+                    fontWeight: 700
+                  }}
+                >
+                  <Users size={15} /> Registered Students ({event.registered_count || 0})
+                </button>
+              )}
               <button className="btn-secondary" onClick={handleShare} style={{ padding: '0.5rem 0.85rem', fontSize: '0.82rem' }}>
                 <Share2 size={15} /> {copied ? 'Copied!' : 'Share'}
               </button>
